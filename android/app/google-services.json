@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1005573549339",
+    "project_id": "taxi-pool-76",
+    "storage_bucket": "taxi-pool-76.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005573549339:android:8b4bfa261d9da58fd437be",
+        "android_client_info": {
+          "package_name": "com.taxipool"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAnf7Pfs4EuPnpYwOBqYphrF9hjXVrQdg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
