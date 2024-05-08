@@ -22,13 +22,13 @@ const NavigationScreen = () => {
                 const token = await firebase.auth().currentUser.getIdToken(true);
                 console.log('User Token',token);
                 const response = await axios.post(
-                    'http://192.168.1.17:5000/api/v1/auth/verify-token',
+                    'http://192.168.1.22:5000/api/v1/auth/verify-token',
                     null,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
                         },
-                        timeout: 5000, // Set a timeout of 5 seconds
+                        timeout: 5000,
                     }
                 );
                 if (response.data.status === 'success') {

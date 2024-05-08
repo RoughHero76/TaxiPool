@@ -84,7 +84,7 @@ const HomeScreen = () => {
       })
 
     } else {
-      // Perform your desired action here
+      navigate.navigate('TripDetails', { pickupCity, dropoffCity });
     }
   };
 

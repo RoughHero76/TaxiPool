@@ -1,20 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+
+
+import OngoingTab from "./OnGoingScreen";
+import UpComingTab from "./UpComingScreen";
+import CompletedTab from "./CompleteScreen";
+
+
+const Tab = createMaterialTopTabNavigator();
+
+
+<>
+  <OngoingTab />
+  <UpComingTab />
+  <CompletedTab />
+</>
+
 
 const Bookings = () => {
-    return (
-        <View style={styles.container}>
-            <Text>Bookings Screen</Text>
-        </View>
-    );
-};
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-});
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="Ongoing" component={OngoingTab} />
+      <Tab.Screen name="UpComing" component={UpComingTab} />
+      <Tab.Screen name="Completed" component={CompletedTab} />
+    </Tab.Navigator>
+  )
+}
+
 
 export default Bookings;

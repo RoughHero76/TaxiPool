@@ -23,6 +23,12 @@ import MapScreen from "./Screens/UserDashboard/OtherScreens/Map/MapScreen";
 
 //Navigation Screen
 import NavigationScreen from './Screens/UserDashboard/Navigation'
+//User Profile
+import UserProfile from "./Screens/UserDashboard/OtherScreens/Profile/UserProfile";
+
+
+//Trip Details Screen for Booking
+import TripDetails from "./Screens/OtherScreens/TripDetails";
 
 const Stack = createNativeStackNavigator();
 
@@ -80,6 +86,27 @@ const App = () => {
               headerTitle: 'Map',
             }}
           />
+
+          <Stack.Screen
+            name="TripDetails"
+            component={TripDetails
+            }
+            options={{
+              headerShown: true,
+              headerTitle: 'Trip Details',
+            }}
+          />
+
+          <Stack.Screen
+            name="UserProfile"
+            component={UserProfile
+            }
+            options={{
+              headerShown: true,
+              headerTitle: 'Profile',
+            }}
+          />
+
 
         </Stack.Navigator>
 

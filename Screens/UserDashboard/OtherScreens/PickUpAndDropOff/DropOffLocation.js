@@ -11,12 +11,14 @@ import {
   Keyboard,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Geolocation from 'react-native-geolocation-service';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { HomeContext } from '../../../../Components/Context/HomeContext';
+import Toast from 'react-native-toast-message';
 
 const GOOGLE_API_KEY = 'AIzaSyCYwHNeqOW-oeSSex-b-vqUyZb3vWcWxVA';
 
@@ -56,7 +58,8 @@ const DropOffLocation = () => {
       }
     } catch (error) {
       console.log('Error fetching address:', error);
-      SetUserDropOffAddress({ address: '', latitude, longitude });
+      Alert.alert('Error', 'Error fetching address. Please try again.');
+      SetUserDropOffAddress(null);
     } finally {
       setLoading({ ...loading, fetchingAddress: false });
     }
@@ -185,7 +188,7 @@ const DropOffLocation = () => {
         />
         <ScrollView>
           <View style={styles.buttonsContainer}>
-           {/*  <TouchableOpacity
+            {/*  <TouchableOpacity
               style={styles.button}
               onPress={handleCurrentGeoLocation}
               disabled={loading.currentLocation}

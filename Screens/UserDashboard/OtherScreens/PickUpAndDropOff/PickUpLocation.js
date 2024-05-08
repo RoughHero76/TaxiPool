@@ -66,11 +66,15 @@ const PickUpLocation = () => {
   const handleCurrentGeoLocation = async () => {
     try {
       setLoading({ ...loading, currentLocation: true });
+      console.log('Requesting location permission...');
       const granted = await requestLocationPermission();
+  
       if (granted) {
+        console.log('Location permission granted, getting current position...');
         Geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude } = position.coords;
+            console.log('Current position:', latitude, longitude);
             await fetchAddressFromCoordinates(latitude, longitude);
             setLoading({ ...loading, currentLocation: false });
           },
@@ -79,17 +83,39 @@ const PickUpLocation = () => {
             setLoading({ ...loading, currentLocation: false });
           },
           {
-            enableHighAccuracy: false,
-            timeout: 5000,
+            enableHighAccuracy: true,
+            timeout: 10000,
             maximumAge: 10000,
-          },
+          }
         );
       } else {
+        console.log('Location permission denied by user');
         setLoading({ ...loading, currentLocation: false });
       }
     } catch (err) {
       console.warn('Error requesting location permission:', err);
       setLoading({ ...loading, currentLocation: false });
+    }
+  };
+  
+  const requestLocationPermission = async () => {
+    try {
+      console.log('Requesting location permission from user...');
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'App needs access to your location',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      console.log('Location permission result:', granted);
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('Error requesting location permission:', err);
+      return false;
     }
   };
 
@@ -122,24 +148,7 @@ const PickUpLocation = () => {
       setLoading({ ...loading, openMap: false });
     }
   };
-  const requestLocationPermission = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'App needs access to your location',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    } catch (err) {
-      console.warn('Error requesting location permission:', err);
-      return false;
-    }
-  };
+  
 
   const handleConfirmLocation = () => {
     if (userPickUpAddress) {
@@ -347,7 +356,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginTop: 16,
     alignItems: 'center',
-    
+
   },
   confirmButtonText: {
     color: 'white',
