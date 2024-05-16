@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
+import { API_URL } from '../../secrets';
 
 const TripDetails = () => {
     const navigate = useNavigation();
@@ -15,7 +16,7 @@ const TripDetails = () => {
     const [tripDetails, setTripDetails] = useState(null);
     const [error, setError] = useState(null);
     const [isBooking, setIsBooking] = useState(false);
-
+    const [approvalReason, setApprovalReason] = useState('');
 
     const [profileIncomplete, setProfileIncomplete] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -31,7 +32,7 @@ const TripDetails = () => {
             setIsLoading(true);
             const token = await firebase.auth().currentUser.getIdToken(true);
             const response = await axios.post(
-                'http://192.168.1.22:5000/api/v1/user/getRideDetails',
+                `${API_URL}/api/v1/user/getRideDetails`,
                 {
                     pickUpCity: pickupCity,
                     dropOffCity: dropoffCity,
@@ -76,10 +77,11 @@ const TripDetails = () => {
             setIsBooking(true);
             const token = await firebase.auth().currentUser.getIdToken(true);
             const response = await axios.post(
-                'http://192.168.1.22:5000/api/v1/user/bookRide',
+                `${API_URL}/api/v1/user/bookRide`,
                 {
                     pickUpCity: pickupCity,
                     dropOffCity: dropoffCity,
+                    reason: approvalReason,
                 },
                 {
                     headers: {
@@ -238,7 +240,7 @@ const TripDetails = () => {
                     <Text style={styles.value}>{tripDetails.estimatedTravelTime} minutes</Text>
                 </View>
                 <View style={styles.detailsContainer}>
-                    <Text style={styles.label}>Within Madhapur:</Text>
+                    <Text style={styles.label}>Within Hyderabad:</Text>
                     <Text style={styles.value}>{tripDetails.isWithinThermalPlant ? 'Yes' : 'No'}</Text>
                 </View>
                 {tripDetails.isSuperAdministratorPrivilegeRequired && (
@@ -247,37 +249,54 @@ const TripDetails = () => {
                         <Text style={styles.approvalText}>Requires Super Administrator Approval</Text>
                     </View>
                 )}
+
+                {tripDetails.isSuperAdministratorPrivilegeRequired || tripDetails.isAdministratorPrivilegeRequired ? (
+                    <View style={styles.approvalRequestTextContainer}>
+                        <Text style={styles.approvalRequestText}>Approval Request Form</Text>
+                        <TextInput
+                            placeholder='Please enter your reason for requesting approval'
+                            placeholderTextColor={'gray'}
+                            style={styles.approvalRequestInput}
+                            onChangeText={setApprovalReason}
+                        >
+
+                        </TextInput>
+                    </View>
+                ) : (null)}
                 {tripDetails.isAdministratorPrivilegeRequired && (
                     <View style={styles.approvalContainer}>
                         <MaterialCommunityIcons name="alert-circle-outline" size={24} color="orange" />
                         <Text style={styles.approvalText}>Requires Administrator Approval</Text>
                     </View>
                 )}
-                {tripDetails.isSuperAdministratorPrivilegeRequired || tripDetails.isAdministratorPrivilegeRequired ? (
-                    <TouchableOpacity
-                        style={styles.requestApprovalButton}
-                        onPress={bookRide}
-                        disabled={isBooking}
-                    >
-                        {isBooking ? (
-                            <ActivityIndicator size="small" color="white" />
-                        ) : (
-                            <Text style={styles.requestApprovalButtonText}>Request Approval</Text>
-                        )}
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity
-                        style={styles.bookButton}
-                        onPress={bookRide}
-                        disabled={isBooking}
-                    >
-                        {isBooking ? (
-                            <ActivityIndicator size="small" color="white" />
-                        ) : (
-                            <Text style={styles.bookButtonText}>Book</Text>
-                        )}
-                    </TouchableOpacity>
-                )}
+
+                {
+                    tripDetails.isSuperAdministratorPrivilegeRequired || tripDetails.isAdministratorPrivilegeRequired ? (
+                        <TouchableOpacity
+                            style={styles.requestApprovalButton}
+                            onPress={bookRide}
+                            disabled={isBooking}
+                        >
+                            {isBooking ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <Text style={styles.requestApprovalButtonText}>Request Approval</Text>
+                            )}
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={styles.bookButton}
+                            onPress={bookRide}
+                            disabled={isBooking}
+                        >
+                            {isBooking ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <Text style={styles.bookButtonText}>Book</Text>
+                            )}
+                        </TouchableOpacity>
+                    )
+                }
             </ScrollView>
         </SafeAreaView>
     );
@@ -327,6 +346,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginLeft: 8,
         color: 'black',
+    },
+
+    approvalRequestTextContainer: {
+
+        marginTop: 16,
+        marginBottom: 16,
+    },
+
+    approvalRequestText: {
+        color: 'black',
+
+    },
+    approvalRequestInput: {
+        borderWidth: 1,
+        borderColor: 'black',
+        borderRadius: 10,
+        padding: 10,
+        marginTop: 16,
     },
     loadingText: {
         fontSize: 16,

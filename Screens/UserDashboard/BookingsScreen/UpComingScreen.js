@@ -7,6 +7,7 @@ import '@react-native-firebase/auth';
 import socketIOClient from 'socket.io-client';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { API_URL } from '../../../secrets';
 
 const UpcomingTab = () => {
     const [bookings, setBookings] = useState([]);
@@ -18,7 +19,7 @@ const UpcomingTab = () => {
             let socket;
 
             const establishSocketConnection = () => {
-                socket = socketIOClient('http://192.168.1.22:5000');
+                socket = socketIOClient('http://192.168.1.17:5000');
                 console.log('Connected to server');
 
                 socket.on('connect', () => {
@@ -64,7 +65,7 @@ const UpcomingTab = () => {
         try {
             setIsLoading(true);
             const token = await firebase.auth().currentUser.getIdToken(true);
-            const response = await axios.get('http://192.168.1.22:5000/api/v1/user/upcomingBookings', {
+            const response = await axios.get(`${API_URL}/api/v1/user/upcomingBookings`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

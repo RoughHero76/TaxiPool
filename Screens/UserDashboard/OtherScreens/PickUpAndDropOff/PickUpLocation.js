@@ -204,10 +204,10 @@ const PickUpLocation = () => {
             >
               <MaterialCommunityIcons name="crosshairs-gps" size={24} color="#333" />
               {loading.currentLocation ? (
-                <>
+                <View style={styles.currentLocationButtonLoading}>
                   <ActivityIndicator size="small" color="#333" />
                   <Text style={styles.buttonText}>Please Wait...</Text>
-                </>
+                </View>
               ) : (
                 <Text style={styles.buttonText}>Current Location</Text>
               )}
@@ -219,10 +219,10 @@ const PickUpLocation = () => {
             >
               <MaterialCommunityIcons name="map-outline" size={24} color="#333" />
               {loading.openMap ? (
-                <>
+               <View style={styles.currentLocationButtonLoading}>
                   <ActivityIndicator size="small" color="#333" />
                   <Text style={styles.buttonText}>Please Wait...</Text>
-                </>
+                </View>
               ) : (
                 <Text style={styles.buttonText}>Open Map</Text>
               )}
@@ -324,6 +324,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: '#333',
     marginRight: 10,
+  },
+  currentLocationButtonLoading: {
+    flexDirection: 'row',
+    marginHorizontal: 5,
+    
   },
   addressContainer: {
     backgroundColor: '#f2f2f2',

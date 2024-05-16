@@ -4,6 +4,7 @@ import auth from '@react-native-firebase/auth';
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import Toast from "react-native-toast-message";
+import { API_URL } from "../../../../secrets";
 
 const UserProfile = () => {
     const navigate = useNavigation();
@@ -54,7 +55,7 @@ const UserProfile = () => {
                 // Update user profile in MongoDB database
                 const token = await currentUser.getIdToken();
                 await axios.post(
-                    'http://192.168.1.22:5000/api/v1/user/updateProfile',
+                    `${API_URL}/api/v1/user/updateProfile`,
                     {
                         name,
                         email,

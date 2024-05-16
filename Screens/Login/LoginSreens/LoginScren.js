@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import auth, { firebase } from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_URL } from '../../../secrets';
 
 const LoginScreen = () => {
   const navigate = useNavigation();
@@ -87,17 +88,24 @@ const LoginScreen = () => {
         const credential = firebase.auth.PhoneAuthProvider.credential(
           confirmationResult.verificationId,
           otpInput,
-
         );
-
         const userCredential = await firebase.auth().signInWithCredential(credential);
         const idToken = await userCredential.user.getIdToken();
         AsyncStorage.setItem('UserToken', idToken);
-
         console.log('ID Token:', idToken);
 
-        if (userCredential) {
+        // Make an API call to create or update the user in the database
+        const response = await axios.post(`${API_URL}/api/v1/user/createUser`, {
+          uid: userCredential.user.uid,
+          name: userCredential.user.displayName,
+          email: userCredential.user.email,
+          phoneNumber: userCredential.user.phoneNumber,
+        });
+
+        if (response.data.status === 'success') {
           navigate.navigate('NavigationScreen');
+        } else {
+          setErrorMessage('Failed to create user in the database');
         }
       } catch (error) {
         console.log(error);
