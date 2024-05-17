@@ -64,7 +64,9 @@ const LoginScreen = () => {
       setIsloading(true);
       try {
         setErrorMessage('');
+        console.log('Entering Try....')
         const confirmation = await firebase.auth().signInWithPhoneNumber(formattedMobileNumber);
+        console.log('Confirmation:', confirmation);
         setConfirmationResult(confirmation);
         setShowOtpInput(true);
         setEditPhoneNumber(false);
