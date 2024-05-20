@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../secrets';
 
 const TripDetails = () => {
@@ -23,6 +24,44 @@ const TripDetails = () => {
     const [bookingPending, setBookingPending] = useState(false);
     const [bookingError, setBookingError] = useState(null);
 
+    //Looking For Drivers
+    const [lookingForDriver, setLookingForDriver] = useState(false);
+    const [driversFound, setDriversFound] = useState(false);
+
+    const sendDriverNotifications = async (bookingId) => {
+        try {
+            console.log('Sending driver notifications for bookingId:', bookingId);
+            const response = await axios.post(`${API_URL}/api/v1/driver/searchingDriver`, { bookingId },
+                {
+                    headers: {
+                        Authorization: `Bearer ${await firebase.auth().currentUser.getIdToken(true)}`,
+                    },
+                    timeout: 10000,
+                }
+            );
+            console.log('API response:', response.data);
+            if (response.data.status === 'success') {
+                console.log('Driver notifications sent successfully.');
+                await AsyncStorage.setItem(bookingId, JSON.stringify({ foundDrivers: true }));
+                setDriversFound(true);
+                setLookingForDriver(false);
+            } else {
+                console.error('Error sending driver notifications:', response.data.message);
+                if (response.data.message === 'No driver found') {
+                    await AsyncStorage.setItem(bookingId, JSON.stringify({ foundDrivers: false }));
+                    setDriversFound(false);
+                    setLookingForDriver(false);
+                }
+            }
+        } catch (error) {
+            console.error('Error sending driver notifications:', error);
+            if (error.response && error.response.data.message === 'No driver found') {
+                await AsyncStorage.setItem(bookingId, JSON.stringify({ foundDrivers: false }));
+                setDriversFound(false);
+                setLookingForDriver(false);
+            }
+        }
+    };
     useEffect(() => {
         fetchTripDetails();
     }, []);
@@ -96,6 +135,11 @@ const TripDetails = () => {
                     setBookingPending(true);
                 } else {
                     setBookingSuccess(true);
+                    setLookingForDriver(true);
+                    // Store the booking ID
+                    const bookingId = response.data.bookingId;
+                    sendDriverNotifications(bookingId);
+
                 }
             } else {
                 setBookingError('Failed to book the ride. Please try again.');
@@ -169,6 +213,22 @@ const TripDetails = () => {
                     <MaterialCommunityIcons name="check-circle" size={80} color="green" />
                     <Text style={styles.bookingSuccessText}>Booking Successful!</Text>
                     <Text style={styles.bookingSuccessSubtext}>Your ride has been booked successfully.</Text>
+                    {lookingForDriver ? (
+                        <View style={styles.searchingDriverContainer}>
+                            <ActivityIndicator size="large" color="orange" />
+                            <Text style={styles.searchingDriverText}>Looking for nearby drivers...</Text>
+                        </View>
+                    ) : (
+                        <View style={styles.driverStatusContainer}>
+                            {driversFound ? (
+                                <Text style={styles.driversFoundText}>Drivers found! Please wait for the driver to accept your ride.</Text>
+                            ) : (
+                                <Text style={styles.noDriversFoundText}>
+                                    No nearby driver can be found. You can try again in Upcoming Bookings.
+                                </Text>
+                            )}
+                        </View>
+                    )}
                     <TouchableOpacity style={styles.homeButton} onPress={() => navigate.navigate('NavigationScreen')}>
                         <Text style={styles.homeButtonText}>Home</Text>
                     </TouchableOpacity>
@@ -544,6 +604,41 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textAlign: 'center',
     },
+
+    /* Searching Driver Container */
+    searchingDriverContainer: {
+
+
+        alignItems: 'center',
+        padding: 20,
+        flexDirection: 'row',
+    },
+    searchingDriverText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 20,
+        textAlign: 'center',
+        color: 'black',
+        alignSelf: 'center',
+    },
+    driversFoundText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 20,
+        textAlign: 'center',
+        color: 'green',
+        alignSelf: 'center',
+    },
+    noDriversFoundText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 20,
+        textAlign: 'center',
+        color: 'orange',
+        alignSelf: 'center',
+    },
+
+
 });
 
 export default TripDetails;

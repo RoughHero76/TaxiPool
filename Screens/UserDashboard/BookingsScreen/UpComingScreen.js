@@ -1,6 +1,6 @@
 // UpcomingTab.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import axios from 'axios';
 import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
@@ -8,6 +8,7 @@ import socketIOClient from 'socket.io-client';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../secrets';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UpcomingTab = () => {
     const [bookings, setBookings] = useState([]);
@@ -19,7 +20,7 @@ const UpcomingTab = () => {
             let socket;
 
             const establishSocketConnection = () => {
-                socket = socketIOClient('http://192.168.1.17:5000');
+                socket = socketIOClient(API_URL);
                 console.log('Connected to server');
 
                 socket.on('connect', () => {
@@ -70,11 +71,12 @@ const UpcomingTab = () => {
                     Authorization: `Bearer ${token}`,
                 },
             });
-
             if (response.data.status === 'success') {
                 setBookings(response.data.bookings);
+                setError(null);
             } else {
                 setError('Failed to fetch upcoming bookings. Please try again.');
+              
             }
         } catch (error) {
             console.error('Error fetching upcoming bookings:', error);
@@ -84,21 +86,101 @@ const UpcomingTab = () => {
         }
     };
 
-    const renderBookingItem = ({ item }) => {
+    const BookingItem = ({ item }) => {
+        const [driverAvailability, setDriverAvailability] = useState(null);
+        const [retryLoading, setRetryLoading] = useState(false);
+        const [retryTimer, setRetryTimer] = useState(null);
+        const [retryCount, setRetryCount] = useState(0);
+
+        useEffect(() => {
+            const fetchDriverAvailability = async () => {
+                try {
+                    const bookingInfo = await AsyncStorage.getItem(item._id);
+                    if (bookingInfo !== null) {
+                        const { foundDrivers } = JSON.parse(bookingInfo);
+                        setDriverAvailability(foundDrivers);
+                    } else {
+                        setDriverAvailability(false);
+                    }
+                } catch (error) {
+                    console.error('Error retrieving driver availability:', error);
+                    setDriverAvailability(false);
+                }
+            };
+
+            if (item.status !== 'pending') {
+                fetchDriverAvailability();
+            }
+        }, [item._id, item.status]);
+
+        const retryBooking = async () => {
+            setRetryLoading(true);
+            setRetryCount(60);
+
+            try {
+                const response = await axios.post(`${API_URL}/api/v1/driver/searchingDriver`, { bookingId: item._id },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${await firebase.auth().currentUser.getIdToken(true)}`,
+                        },
+                        timeout: 10000,
+                    }
+                );
+                console.log('API response:', response.data);
+                if (response.data.status === 'success') {
+                    console.log('Driver notifications sent successfully.');
+                    await AsyncStorage.setItem(item._id, JSON.stringify({ foundDrivers: true }));
+                    setDriverAvailability(true);
+                } else {
+                    console.error('Error sending driver notifications:', response.data.message);
+                    await AsyncStorage.setItem(item._id, JSON.stringify({ foundDrivers: false }));
+                    setDriverAvailability(false);
+                }
+            } catch (error) {
+
+                if (error.response && error.response.status === 404 && error.response.data.message === 'No driver found') {
+                    await AsyncStorage.setItem(item._id, JSON.stringify({ foundDrivers: false }));
+                    setDriverAvailability(false);
+                } else {
+                    console.error('Error sending driver notifications:', error);
+                }
+            } finally {
+                setRetryLoading(false);
+            }
+
+            const timer = setInterval(() => {
+                setRetryCount((prevCount) => {
+                    if (prevCount === 1) {
+                        clearInterval(timer);
+                        setRetryLoading(false);
+                        setRetryTimer(null);
+                    }
+                    return prevCount - 1;
+                });
+            }, 1000);
+
+            setRetryTimer(timer);
+        };
+
         let statusText;
         let statusColor;
         switch (item.status) {
             case 'pending':
                 statusText = 'Your booking is pending. Please wait for admin approval.';
-                statusColor = '#FFC107'; 
+                statusColor = '#FFC107';
                 break;
             case 'searchingRide':
                 statusText = 'We are searching for a ride for you. Please wait.';
-                statusColor = '#4CAF50'; 
+                statusColor = '#2196F3';
+                break;
+
+            case 'driverAccepted':
+                statusText = 'Driver has accepted your booking. Please wait.';
+                statusColor = '#4CAF50';
                 break;
             default:
                 statusText = `Status: ${item.status}`;
-                statusColor = '#F44336'; 
+                statusColor = '#F44336';
         }
 
         return (
@@ -108,10 +190,58 @@ const UpcomingTab = () => {
                     <Icon name="circle" size={12} color={statusColor} />
                     <Text style={styles.statusText}>{statusText}</Text>
                 </View>
+                {item.status === 'driverAccepted' && (
+                    <View style={styles.driverInformationContainer}>
+                        <Image
+                            source={require('../../../assets/images/profile.jpg')}
+                            style={styles.driverProfileImage}
+                        />
+                        <View style={styles.contactInfoContainer}>
+                            <Text style={styles.driverNameText}>Name: {item.driver?.name}</Text>
+                            <Text style={styles.driverContactText}>Contact Number: {item.driver?.contactNumber}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.showLocationButton}>
+                            <Text style={styles.showLocationButtonText}>Show Location</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                <View style={styles.bookingInformationContainer}>
+                    <View style={styles.bookingInformation}>
+                        <Text style={styles.pickupLocationText}>Pick Up: {item.pickUpCity.address}</Text>
+                        <Text style={styles.dropoffLocationText}>Drop Off: {item.dropOffCity.address}</Text>
+
+                    </View>
+                </View>
+                <View style={styles.driverAvailabilityContainer}>
+                    {item.status !== 'pending' && item.status !== 'driverAccepted' && driverAvailability !== null && (
+                        <View style={styles.driverAvailabilityRow}>
+                            <Text style={styles.driverAvailabilityText}>
+                                {driverAvailability ? 'Drivers found for this booking.' : 'No drivers found for this booking.'}
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.retryButton}
+                                onPress={retryBooking}
+                                disabled={retryLoading || retryTimer !== null}
+                            >
+                                {retryLoading ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Text style={styles.retryButtonText}>
+                                        {retryTimer !== null ? `Retry (${retryCount}s)` : 'Retry'}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
                 {/* Render other booking details */}
             </View>
         );
     };
+    const renderBookingItem = ({ item }) => {
+        return <BookingItem item={item} />;
+    };
+
 
     if (isLoading) {
         return (
@@ -190,6 +320,94 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: 'black',
     },
+
+    /* Driver information container */
+    driverInformationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        backgroundColor: 'white',
+        padding: 10,
+        borderRadius: 10,
+    },
+    driverProfileImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        marginRight: 10,
+    },
+    contactInfoContainer: {
+        flex: 1,
+    },
+    driverNameText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: 'black',
+    },
+    driverContactText: {
+        fontSize: 14,
+        color: 'gray',
+    },
+    showLocationButton: {
+        backgroundColor: 'black',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    showLocationButtonText: {
+        color: 'white',
+        fontSize: 14,
+    },
+    /*  */
+
+    bookingInformationContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        backgroundColor: 'white',
+    },
+
+    bookingInformation: {
+        marginTop: 8,
+    },
+    pickupLocationText: {
+        marginBottom: 5,
+        fontSize: 14,
+        color: 'black',
+    },
+
+    dropoffLocationText: {
+        fontSize: 14,
+        color: 'black',
+    },
+
+    driverAvailabilityContainer: {
+        marginTop: 8,
+    },
+    driverAvailabilityRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    driverAvailabilityText: {
+        fontSize: 14,
+        color: 'gray',
+    },
+    retryButton: {
+        backgroundColor: 'gray',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+
+    },
+    retryButtonText: {
+        color: 'black',
+        fontSize: 14,
+    },
+
+
 });
 
 export default UpcomingTab;
