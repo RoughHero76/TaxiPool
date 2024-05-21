@@ -5,15 +5,21 @@ import axios from 'axios';
 import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
 import socketIOClient from 'socket.io-client';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_URL } from '../../../secrets';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
 const UpcomingTab = () => {
     const [bookings, setBookings] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const [showDriverLocationLoading, setShowDriverLocationLoading] = useState(false);
+
+    const navigate = useNavigation();
 
     useFocusEffect(
         React.useCallback(() => {
@@ -74,9 +80,10 @@ const UpcomingTab = () => {
             if (response.data.status === 'success') {
                 setBookings(response.data.bookings);
                 setError(null);
+
             } else {
                 setError('Failed to fetch upcoming bookings. Please try again.');
-              
+
             }
         } catch (error) {
             console.error('Error fetching upcoming bookings:', error);
@@ -162,6 +169,57 @@ const UpcomingTab = () => {
             setRetryTimer(timer);
         };
 
+
+
+        const handleShowLocation = async (bookingId, pickupLatitude, pickupLongitude) => {
+            try {
+                setShowDriverLocationLoading(true);
+                const token = await firebase.auth().currentUser.getIdToken(true);
+                const response = await axios.post(
+                    `${API_URL}/api/v1/user/driverLocation`,
+                    {
+                        bookingId: bookingId,
+                        pickUpCity: {
+                            latitude: pickupLatitude,
+                            longitude: pickupLongitude,
+                        },
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+                // Handle the response data
+                console.log(response.data);
+                const driverData = response.data.data;
+                // Navigate to a different screen and pass the data as parameters
+                navigate.navigate('DriverLocMapScreen', {
+                    driverName: driverData.driverName,
+                    driverLocation: driverData.driverLocation,
+                    pickupLocation: {
+                        latitude: pickupLatitude,
+                        longitude: pickupLongitude,
+                    },
+                    estimatedTime: driverData.estimatedTime,
+                    distance: driverData.distance,
+                    bookingId: bookingId,
+                });
+            } catch (error) {
+                // Handle any errors
+                console.error(error);
+                console.log(error.response.data);
+                Toast.show({
+                    position: 'top',
+                    type: 'error',
+                    text1: error.response.data.message
+                })
+            } finally {
+                setShowDriverLocationLoading(false);
+            }
+        };
+
+
         let statusText;
         let statusColor;
         switch (item.status) {
@@ -178,6 +236,12 @@ const UpcomingTab = () => {
                 statusText = 'Driver has accepted your booking. Please wait.';
                 statusColor = '#4CAF50';
                 break;
+
+            case 'driverArrivedPickup':
+                statusText = 'Driver has arrived at the pickup location.';
+                statusColor = '#4CAF50';
+                break;
+
             default:
                 statusText = `Status: ${item.status}`;
                 statusColor = '#F44336';
@@ -190,18 +254,33 @@ const UpcomingTab = () => {
                     <Icon name="circle" size={12} color={statusColor} />
                     <Text style={styles.statusText}>{statusText}</Text>
                 </View>
-                {item.status === 'driverAccepted' && (
+                {(item.status === 'driverAccepted' || item.status === 'driverArrivedPickup') && (
                     <View style={styles.driverInformationContainer}>
                         <Image
                             source={require('../../../assets/images/profile.jpg')}
                             style={styles.driverProfileImage}
                         />
-                        <View style={styles.contactInfoContainer}>
-                            <Text style={styles.driverNameText}>Name: {item.driver?.name}</Text>
-                            <Text style={styles.driverContactText}>Contact Number: {item.driver?.contactNumber}</Text>
-                        </View>
-                        <TouchableOpacity style={styles.showLocationButton}>
-                            <Text style={styles.showLocationButtonText}>Show Location</Text>
+                        {item.driver ? (
+                            <View style={styles.contactInfoContainer}>
+                                <Text style={styles.driverNameText}>Name: {item.driver.name}</Text>
+                                <Text style={styles.driverContactText}>Contact Number: {item.driver.contactNumber}</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.contactInfoContainer}>
+                                <Text style={styles.driverNameText}>Driver information not available</Text>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.showLocationButton}
+                            disabled={showDriverLocationLoading}
+                            onPress={() => handleShowLocation(item._id, item.pickUpCity.latitude, item.pickUpCity.longitude)}
+                        >
+                            {showDriverLocationLoading ?
+                                (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Text style={styles.showLocationButtonText}>Show Location</Text>
+                                )}
                         </TouchableOpacity>
                     </View>
                 )}
@@ -209,11 +288,10 @@ const UpcomingTab = () => {
                     <View style={styles.bookingInformation}>
                         <Text style={styles.pickupLocationText}>Pick Up: {item.pickUpCity.address}</Text>
                         <Text style={styles.dropoffLocationText}>Drop Off: {item.dropOffCity.address}</Text>
-
                     </View>
                 </View>
                 <View style={styles.driverAvailabilityContainer}>
-                    {item.status !== 'pending' && item.status !== 'driverAccepted' && driverAvailability !== null && (
+                    {item.status !== 'pending' && item.status !== 'driverAccepted' && item.status !== 'driverArrivedPickup' && driverAvailability !== null && (
                         <View style={styles.driverAvailabilityRow}>
                             <Text style={styles.driverAvailabilityText}>
                                 {driverAvailability ? 'Drivers found for this booking.' : 'No drivers found for this booking.'}

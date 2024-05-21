@@ -31,6 +31,9 @@ import UserProfile from "./Screens/UserDashboard/OtherScreens/Profile/UserProfil
 //Trip Details Screen for Booking
 import TripDetails from "./Screens/OtherScreens/TripDetails";
 
+//Driver Live Location MAP
+import DriverLocMapScreen from "./Screens/UserDashboard/OtherScreens/Map/DriverLocMapScreen";
+
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -81,6 +84,16 @@ const App = () => {
           <Stack.Screen
             name="MapScreen"
             component={MapScreen
+            }
+            options={{
+              headerShown: true,
+              headerTitle: 'Map',
+            }}
+          />
+
+          <Stack.Screen
+            name="DriverLocMapScreen"
+            component={DriverLocMapScreen
             }
             options={{
               headerShown: true,
