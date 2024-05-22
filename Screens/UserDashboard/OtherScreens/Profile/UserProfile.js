@@ -96,12 +96,14 @@ const UserProfile = () => {
                 <TextInput
                     style={styles.input}
                     placeholder="Enter your name"
+                    placeholderTextColor={"gray"}
                     value={name}
                     onChangeText={setName}
                 />
                 <TextInput
                     style={styles.input}
                     placeholder="Enter your email"
+                    placeholderTextColor={"gray"}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -110,6 +112,7 @@ const UserProfile = () => {
                     <TextInput
                         style={styles.input}
                         placeholder="Enter your phone number"
+                        placeholderTextColor={"gray"}
                         value={phoneNumber}
                         onChangeText={setPhoneNumber}
                         keyboardType="phone-pad"
