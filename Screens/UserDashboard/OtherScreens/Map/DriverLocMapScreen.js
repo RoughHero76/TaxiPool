@@ -12,6 +12,10 @@ const DriverLocMapScreen = ({ route }) => {
   const navigation = useNavigation();
   const { driverName, driverLocation: initialDriverLocation, pickupLocation, bookingId } = route.params;
   const [driverLocation, setDriverLocation] = useState(initialDriverLocation);
+
+  const [driverPhoneNumber, setDriverPhoneNumber] = useState(null);
+  const [vehicleNumber, setVehicleNumber] = useState(null);
+
   const [estimatedTime, setEstimatedTime] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState(null);
   const [distance, setDistance] = useState(null);
@@ -33,20 +37,43 @@ const DriverLocMapScreen = ({ route }) => {
             },
           }
         );
-        const { driverLocation, estimatedTime, distance, routeCoordinates } = response.data.data;
-        console.log(response.data);
-        setDriverLocation(driverLocation);
-        setEstimatedTime(estimatedTime);
-        setDistance(distance);
-        setRouteCoordinates(routeCoordinates);
+
+        console.log('API Response:', response.data); // Log the entire response data
+
+        if (response.data.status === 'success') {
+          const {
+            driverLocation,
+            estimatedTime,
+            distance,
+            routeCoordinates,
+            driverPhoneNumber,
+            vehicleNumber,
+          } = response.data.data;
+          console.log('Driver Location:', driverLocation);
+          console.log('Estimated Time:', estimatedTime);
+          console.log('Distance:', distance);
+          console.log('Route Coordinates:', routeCoordinates);
+
+          setDriverLocation(driverLocation);
+          setEstimatedTime(estimatedTime);
+          setDistance(distance);
+          setRouteCoordinates(routeCoordinates);
+          setDriverPhoneNumber(driverPhoneNumber);
+          setVehicleNumber(vehicleNumber);
+        } else {
+          console.error('API Error:', response.data.error);
+        }
       } catch (error) {
         console.error('Error fetching driver location:', error);
-        console.log(error.response.data);
+        console.log('Error Response:', error.response);
+        console.log('Error Data:', error.response?.data);
       }
     };
 
+
     fetchDriverLocation();
     const intervalId = setInterval(fetchDriverLocation, 30000);
+
     return () => {
       clearInterval(intervalId);
     };
@@ -139,10 +166,24 @@ const DriverLocMapScreen = ({ route }) => {
           />
         )}
       </MapView>
+
+
+      {/* Estimated time and distance section */}
       <View style={styles.infoContainer}>
-        {estimatedTime && <Text style={styles.infoText}>Estimated Time: {estimatedTime} min</Text>}
-        {distance && <Text style={styles.infoText}>Distance: {formatDistance(distance)} km</Text>}
+        <Text style={styles.driverInfoText}>Driver Name: {driverName}</Text>
+        <Text style={styles.driverInfoText}>Phone Number: {driverPhoneNumber}</Text>
+        <Text style={styles.driverInfoText}>Vehicle Number: {vehicleNumber}</Text>
+        {estimatedTime > 0 ? (
+          <Text style={styles.infoText}>Estimated Time: {estimatedTime} min</Text>
+        ) : (
+          <Text style={styles.infoText}>Driver has arrived at the pickup location.</Text>
+        )}
+        {distance > 0 ? (
+          <Text style={styles.infoText}>Distance: {formatDistance(distance)} km</Text>
+        ) : null}
       </View>
+
+      {/* Back button section */}
       <View style={styles.backButton}>
         <MaterialCommunityIcons
           name="arrow-left"
@@ -187,6 +228,12 @@ const styles = StyleSheet.create({
   carIcon: {
     width: 40,
     height: 40,
+  },
+
+  driverInfoText: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: 'black',
   },
 });
 
