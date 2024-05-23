@@ -6,14 +6,24 @@ import auth from '@react-native-firebase/auth';
 import { ActivityIndicator } from 'react-native';
 import { HomeContext } from '../../../Components/Context/HomeContext';
 import Toast from 'react-native-toast-message';
-
-
+import { firebase } from '@react-native-firebase/auth';
 
 const MoreScreen = () => {
 
   //Context Variables
 
   const { user, setUser } = useContext(HomeContext);
+
+
+  useEffect(() => {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        setUser(user);
+      } else {
+        setUser(null);
+      }
+    });
+  }, []);
 
   const navigate = useNavigation();
 
@@ -24,6 +34,9 @@ const MoreScreen = () => {
     navigate.navigate('UserProfile');
   }
 
+  const handleCustomerSupport = () => {
+    navigate.navigate('SupportScreen');
+  }
 
   const handleSignOut = async () => {
     setLoading(true);
@@ -42,7 +55,7 @@ const MoreScreen = () => {
         position: 'bottom',
         visibilityTime: 3000,
         text1: 'Signed Out Successfully',
-        
+
       });
       /* Alert.alert('Signed Out Successfully'); */
     } catch (error) {
@@ -73,8 +86,8 @@ const MoreScreen = () => {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity>
-            <View style={styles.buttonContainer}>
+          <TouchableOpacity onPress={handleCustomerSupport}>
+            <View style={styles.buttonContainer} >
               <Icon name="headphones" size={24} color="#333" />
               <Text style={styles.buttonText}>Customer Support</Text>
             </View>
@@ -101,7 +114,7 @@ const MoreScreen = () => {
             </View>
           </TouchableOpacity>
 
-{/*           <TouchableOpacity>
+          {/*           <TouchableOpacity>
             <View style={styles.buttonContainer}>
               <Icon name="delete" size={24} color="#333" />
               <Text style={styles.buttonText}>Delete This Account</Text>
@@ -138,15 +151,16 @@ const styles = StyleSheet.create({
   profilePicContainer: {
     alignItems: "center",
     marginBottom: 24,
-},
-profilePic: {
+  },
+  profilePic: {
     width: 120,
     height: 120,
     borderRadius: 60,
-},
+  },
   username: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: 'black',
   },
   buttonsContainer: {
     flexDirection: 'column',

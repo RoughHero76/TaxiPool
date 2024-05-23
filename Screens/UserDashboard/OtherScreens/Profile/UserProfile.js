@@ -7,161 +7,166 @@ import Toast from "react-native-toast-message";
 import { API_URL } from "../../../../secrets";
 
 const UserProfile = () => {
-    const navigate = useNavigation();
+  const navigate = useNavigation();
 
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [allowPhoneNumberEdit, setAllowPhoneNumberEdit] = useState(false);
+  const [user, setUser] = useState(null);
 
-    const [loading, setLoading] = useState(false);
-    const [refresh, setRefresh] = useState(false);
-    const [allowPhoneNumberEdit, setAllowPhoneNumberEdit] = useState(false);
-    const [user, setUser] = useState(null);
+  useEffect(() => {
+    setRefresh(false);
+    const unsubscribe = auth().onAuthStateChanged(async (authUser) => {
+      if (authUser) {
+        setUser(authUser);
+        setName(authUser.displayName);
+        setEmail(authUser.email);
+        setPhoneNumber(authUser.phoneNumber);
+      }
+    });
 
-    useEffect(() => {
-        setRefresh(false);
-        const unsubscribe = auth().onAuthStateChanged(async (authUser) => {
-            if (authUser) {
-                setUser(authUser);
-                setName(authUser.displayName);
-                setEmail(authUser.email);
-                setPhoneNumber(authUser.phoneNumber);
-            }
+    return unsubscribe;
+  }, [refresh]);
+
+  useEffect(() => {
+    if (user && !user.phoneNumber) {
+      setAllowPhoneNumberEdit(true);
+    }
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+
+    try {
+      const currentUser = auth().currentUser;
+
+      if (name !== currentUser.displayName || email !== currentUser.email || phoneNumber !== currentUser.phoneNumber) {
+        // Update user profile in Firebase Authentication
+        await currentUser.updateProfile({
+          displayName: name,
         });
 
-        return unsubscribe;
-    }, [refresh]);
+        // await currentUser.updateEmail(email); // Can't update email since email login is not enabled
 
-    useEffect(() => {
-        if (user && !user.phoneNumber) {
-            setAllowPhoneNumberEdit(true);
-        }
-    }, [user]);
+        // Update user profile in MongoDB database
+        const token = await currentUser.getIdToken();
+        await axios.post(
+          `${API_URL}/api/v1/user/updateProfile`,
+          {
+            name,
+            email,
+            phoneNumber,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
 
-    const handleSaveProfile = async () => {
-        setLoading(true);
+      setLoading(false);
+      setRefresh(true);
 
-        try {
-            const currentUser = auth().currentUser;
+      Toast.show({
+        type: 'success',
+        position: 'bottom',
+        visibilityTime: 3000,
+        text1: 'Your Profile was updated!',
+      });
+    } catch (error) {
+      console.log(error);
+      setLoading(false);
+      Toast.show({
+        type: 'error',
+        position: 'bottom',
+        visibilityTime: 3000,
+        text1: 'Failed to update profile. Please try again.',
+      });
+    }
+  };
 
-            if (name !== currentUser.displayName || email !== currentUser.email || phoneNumber !== currentUser.phoneNumber) {
-                // Update user profile in Firebase Authentication
-                await currentUser.updateProfile({
-                    displayName: name,
-                });
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.fieldsContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your name"
+          placeholderTextColor="black"
+          value={name}
+          onChangeText={setName}
+          color="black"
+          fontWeight="bold"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your email"
+          placeholderTextColor="black"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          color="black"
+          fontWeight="bold"
+        />
+        {user && (
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your phone number"
+            placeholderTextColor="black"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            keyboardType="phone-pad"
+            editable={allowPhoneNumberEdit}
+            color="black"
+            fontWeight="bold"
+          />
+        )}
+      </View>
 
-         /*        await currentUser.updateEmail(email); */ //Cant update email since email login is not enabled
-
-                // Update user profile in MongoDB database
-                const token = await currentUser.getIdToken();
-                await axios.post(
-                    `${API_URL}/api/v1/user/updateProfile`,
-                    {
-                        name,
-                        email,
-                        phoneNumber,
-                    },
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
-            }
-
-            setLoading(false);
-            setRefresh(true);
-
-            Toast.show({
-                type: 'success',
-                position: 'bottom',
-                visibilityTime: 3000,
-                text1: 'Your Profile was updated!',
-            });
-        } catch (error) {
-            console.log(error);
-            setLoading(false);
-            Toast.show({
-                type: 'error',
-                position: 'bottom',
-                visibilityTime: 3000,
-                text1: 'Failed to update profile. Please try again.',
-            });
-        }
-    };
-
-    return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.fieldsContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Enter your name"
-                    placeholderTextColor={"gray"}
-                    value={name}
-                    onChangeText={setName}
-                />
-                <TextInput
-                    style={styles.input}
-                    placeholder="Enter your email"
-                    placeholderTextColor={"gray"}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                />
-                {user && (
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter your phone number"
-                        placeholderTextColor={"gray"}
-                        value={phoneNumber}
-                        onChangeText={setPhoneNumber}
-                        keyboardType="phone-pad"
-                        editable={allowPhoneNumberEdit}
-                    />
-                )}
-            </View>
-
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile} disabled={loading}>
-                {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                )}
-            </TouchableOpacity>
-        </ScrollView>
-    );
+      <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save</Text>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        backgroundColor: 'white',
-        padding: 16,
-    },
-    fieldsContainer: {
-        width: "100%",
-    },
-    input: {
-        marginBottom: 10,
-        height: 40,
-        borderColor: 'gray',
-        borderWidth: 1,
-        paddingHorizontal: 8,
-        marginTop: 4,
-        borderRadius: 15,
-    },
-    saveButton: {
-        backgroundColor: "black",
-        paddingVertical: 12,
-        paddingHorizontal: 6,
-        borderRadius: 8,
-        marginTop: 29,
-    },
-    saveButtonText: {
-        alignSelf: "center",
-        color: "white",
-        fontWeight: "bold",
-    },
+  container: {
+    flexGrow: 1,
+    backgroundColor: 'white',
+    padding: 16,
+  },
+  fieldsContainer: {
+    width: "100%",
+  },
+  input: {
+    marginBottom: 10,
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    marginTop: 4,
+    borderRadius: 15,
+  },
+  saveButton: {
+    backgroundColor: "black",
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    marginTop: 29,
+  },
+  saveButtonText: {
+    alignSelf: "center",
+    color: "white",
+    fontWeight: "bold",
+  },
 });
 
 export default UserProfile;

@@ -26,7 +26,8 @@ import MapScreen from "./Screens/UserDashboard/OtherScreens/Map/MapScreen";
 import NavigationScreen from './Screens/UserDashboard/Navigation'
 //User Profile
 import UserProfile from "./Screens/UserDashboard/OtherScreens/Profile/UserProfile";
-
+//Customer Support
+import SupportScreen from "./Screens/UserDashboard/OtherScreens/CustomerSupport/CustomerSuppport";
 
 //Trip Details Screen for Booking
 import TripDetails from "./Screens/OtherScreens/TripDetails";
@@ -120,6 +121,18 @@ const App = () => {
               headerTitle: 'Profile',
             }}
           />
+
+          <Stack.Screen
+            name="SupportScreen"
+            component={SupportScreen
+            }
+            options={{
+              headerShown: true,
+              headerTitle: 'Support',
+            }}
+          />
+
+
 
 
         </Stack.Navigator>

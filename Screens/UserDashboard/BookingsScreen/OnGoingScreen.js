@@ -1,205 +1,173 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity, FlatList, Image, Alert, StyleSheet } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
-import { BookingStyles } from './BookingGlobalStyle';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import axios from 'axios';
+import firebase from '@react-native-firebase/app';
+import { API_URL } from '../../../secrets';
+import Toast from 'react-native-toast-message';
+import { useFocusEffect } from '@react-navigation/native';
+import MapViewDirections from 'react-native-maps-directions';
+import { GOOGLE_MAPS_API_KEY } from '../../../secrets';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const OnGoingScreen = () => {
-  const [bookings, setBookings] = useState([]);
+  const [ongoingRide, setOngoingRide] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [estimatedDistance, setEstimatedDistance] = useState(null);
+  const [estimatedTime, setEstimatedTime] = useState(null);
+  const mapRef = useRef(null);
 
-  const navigate = useNavigation();
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchOngoingRide();
+    }, [])
+  );
 
-  useEffect(() => {
-    setBookings([]);
-    setRefreshing(false);
-
-    const fetchBookings = async () => {
-      try {
-        const currentUser = auth().currentUser;
-        if (currentUser) {
-          const bookingsQuery = await firestore()
-            .collection('userBookings')
-            .where('userUid', '==', currentUser.uid)
-            .where('status', '==', 'active')
-            .get();
-          const fetchedBookings = bookingsQuery.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          setBookings(fetchedBookings);
-        }
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBookings();
-  }, [refreshing]);
-
-  const handleReload = () => {
-    setRefreshing(true);
-  };
-
-  const handleHelp = (bookingId) => {
-
-    console.log('Help requested for booking:', bookingId);
-
-    navigate.navigate('CustomerSupport');
-
-
-  };
-
-  const handleSOS = (bookingId) => {
-    // Implement logic for handling SOS request
-    console.log('SOS requested for booking:', bookingId);
-  };
-
-  const calculateRemainingHours = (endTime) => {
-    const currentTime = new Date().getTime();
-    const remainingMilliseconds = new Date(endTime).getTime() - currentTime;
-    const remainingHours = Math.floor(remainingMilliseconds / (1000 * 60 * 60));
-    return remainingHours;
-  };
-
-  const renderBooking = ({ item }) => {
-    const endTime = new Date(`${item.dropOffDate} ${item.dropTime}`).getTime();
-    const remainingHours = calculateRemainingHours(endTime);
-
-    return (
-      <View style={styles.mainContainer}>
-        <View style={styles.card}>
-          <View style={styles.detailsContainer}>
-            <Text style={styles.name}>{item.vehicleName}</Text>
-            <Text style={styles.details}>
-              Pickup Date: {item.pickupDate}
-            </Text>
-            <Text style={styles.details}>
-              Pickup Time: {item.pickTime}
-            </Text>
-            <Text style={styles.details}>
-              Drop-off Date: {item.dropOffDate}
-            </Text>
-            <Text style={styles.details}>
-              Drop-off Time: {item.dropTime}
-            </Text>
-            <Text style={styles.price}>Price: {item.price}</Text>
-            <Text style={styles.details}>
-              Rented Hours: {item.rentedHours}
-            </Text>
-
-          </View>
-          <Image source={{ uri: item.vehicleImage }} style={styles.image} />
-          <View >
-            <TouchableOpacity onPress={handleReload} >
-              <Icon name="refresh" size={24} color="black" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            onPress={() => handleHelp(item.id)}
-            style={styles.helpButton}
-          >
-            <Text style={styles.buttonText}>Help</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleSOS(item.id)}
-            style={styles.sosButton}
-          >
-            <Text style={styles.buttonText}>SOS</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+  const fetchOngoingRide = async () => {
+    try {
+      setLoading(true);
+      const token = await firebase.auth().currentUser.getIdToken(true);
+      const response = await axios.get(`${API_URL}/api/v1/user/getOngoingRide`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setOngoingRide(response.data.data[0]);
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error('Error fetching ongoing ride:', error);
+      Toast.show({
+        type: 'error',
+        text2: 'An error occurred while fetching ongoing ride',
+        visibilityTime: 5000,
+        style: {
+          backgroundColor: '#ff4d4f',
+          borderRadius: 8,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        },
+        text2Style: {
+          fontSize: 16,
+          fontWeight: 'bold',
+          color: 'red',
+        },
+      });
+    }
   };
 
   return (
-    <View style={BookingStyles.container}>
+    <View style={styles.container}>
       {loading ? (
-        <Text>Loading...</Text>
-      ) : bookings.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="black" />
+          <Text style={styles.loadingText}>Loading ongoing ride...</Text>
+        </View>
+      ) : ongoingRide ? (
         <>
-          <Text style={BookingStyles.message}>No Ongoing Bookings</Text>
-          <TouchableOpacity onPress={handleReload} style={BookingStyles.button}>
-            <Text style={BookingStyles.buttonText}>Reload</Text>
-          </TouchableOpacity>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            showsUserLocation={true}
+            initialRegion={{
+              latitude: ongoingRide.pickUpCity.latitude,
+              longitude: ongoingRide.pickUpCity.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            <Marker coordinate={ongoingRide.pickUpCity}>
+              <View style={styles.markerContainer}>
+                <Icon name="map-marker" size={30} color="green" />
+              </View>
+            </Marker>
+            <Marker coordinate={ongoingRide.dropOffCity}>
+              <View style={styles.markerContainer}>
+                <Icon name="map-marker" size={30} color="red" />
+              </View>
+            </Marker>
+            {ongoingRide.driverId.currentLocation && (
+              <>
+                <Marker coordinate={ongoingRide.driverId.currentLocation}>
+                  <Image
+                    source={require('../../../assets/images/carIcon.png')}
+                    style={styles.carIcon}
+                    resizeMode="contain"
+                  />
+                </Marker>
+                <MapViewDirections
+                  origin={ongoingRide.driverId.currentLocation}
+                  destination={ongoingRide.dropOffCity}
+                  apikey={GOOGLE_MAPS_API_KEY}
+                  strokeWidth={3}
+                  strokeColor="blue"
+                  onReady={(result) => {
+                    const { distance, duration } = result;
+                    setEstimatedDistance(distance.toFixed(2));
+                    setEstimatedTime(Math.ceil(duration));
+                  }}
+                />
+              </>
+            )}
+          </MapView>
+          <View style={styles.detailsContainer}>
+            <Text style={styles.detailsText}>Distance: {estimatedDistance} km</Text>
+            <Text style={styles.detailsText}>Estimated Time: {estimatedTime} min</Text>
+            <Text style={styles.detailsText}>Driver: {ongoingRide.driverId.name}</Text>
+            <Text style={styles.detailsText}>Phone: {ongoingRide.driverId.phoneNumber}</Text>
+          </View>
         </>
       ) : (
-        <FlatList data={bookings} renderItem={renderBooking} keyExtractor={(item) => item.id} />
+        <Text style={styles.noRides}>No ongoing ride found.</Text>
       )}
     </View>
   );
 };
 
-export default OnGoingScreen;
-
 const styles = StyleSheet.create({
-  mainContainer: {
+  container: {
     flex: 1,
-    flexDirection: 'column',
   },
-  card: {
-    flexDirection: 'row',
-    margin: 10,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    borderBottomWidth: 2,
-    elevation: 2,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    marginTop: 10,
+    color: 'black',
+  },
+  map: {
+    flex: 1,
   },
   detailsContainer: {
-    flex: 1,
+    backgroundColor: 'white',
     padding: 10,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    marginHorizontal: 10,
+    marginVertical: 10,
   },
-  image: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 10,
-    resizeMode: 'contain',
-  },
-  name: {
-    fontSize: 18,
-    color: 'black',
-    fontWeight: 'bold',
-  },
-  details: {
-    fontSize: 14,
-    color: 'black',
-  },
-  price: {
-    color: 'green',
-    marginTop: 30,
+  detailsText: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 2
+    marginBottom: 5,
+    color: 'black',
   },
-  buttonContainer: {
-    flexDirection: 'row',
+  noRides: {
+    fontSize: 18,
+    textAlign: 'center',
+    marginTop: 50,
+    color: 'black',
+  },
+  carIcon: {
+    width: 40,
+    height: 40,
+  },
+  markerContainer: {
+    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-  },
-  helpButton: {
-    backgroundColor: 'orange',
-    paddingVertical: 8,
-    borderRadius: 4,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
-  },
-  sosButton: {
-    backgroundColor: 'red',
-    paddingVertical: 8,
-    borderRadius: 4,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginHorizontal: 5,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
 });
+
+export default OnGoingScreen;

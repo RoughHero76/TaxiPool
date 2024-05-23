@@ -41,7 +41,7 @@ const MapScreen = ({ navigation, route }) => {
 
   const handleConfirmLocation = () => {
     if (selectedLocation) {
-      const { originScreen } = route.params; 
+      const { originScreen } = route.params;
       navigation.navigate(originScreen, { location: selectedLocation });
     } else {
       Toast.show({
@@ -180,8 +180,11 @@ const MapScreen = ({ navigation, route }) => {
             language: 'en',
           }}
           styles={{
+            container: styles.autocompleteContainer,
             textInputContainer: styles.textInputContainer,
             textInput: styles.textInput,
+            listView: styles.listView,
+            description: styles.description,
           }}
           renderLeftButton={() => (
             <MaterialCommunityIcons name="magnify" size={24} color="black" style={styles.searchIcon} />
@@ -235,6 +238,11 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 1,
   },
+  autocompleteContainer: {
+    flex: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1,
+  },
   textInputContainer: {
     flexDirection: 'row',
     backgroundColor: 'white',
@@ -246,6 +254,17 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     marginLeft: 10,
+    color: 'black',
+  },
+  listView: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    marginTop: 10,
+    elevation: 2,
+  },
+  description: {
+    fontSize: 16,
+    color: '#333',
   },
   searchIcon: {
     marginRight: 0,

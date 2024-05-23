@@ -7,9 +7,10 @@ export const BookingStyles = StyleSheet.create({
   },
   message: {
     fontSize: 18,
-
+    color: 'black',
     alignSelf: 'center',
     marginBottom: 16,
+
   },
   button: {
     backgroundColor: 'black',

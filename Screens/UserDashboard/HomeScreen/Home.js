@@ -1,29 +1,79 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, PermissionsAndroid } from 'react-native';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, PermissionsAndroid, Image, ActivityIndicator } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import cardBackgroundImage from '../../../assets/images/backgroundCard.jpg';
-import Accordion from './Faq';
-import VehicleCard from './VehicleCard';
 import Toast from 'react-native-toast-message';
 import Geolocation from 'react-native-geolocation-service';
 import { HomeContext } from '../../../Components/Context/HomeContext';
+import MapView, { Marker } from 'react-native-maps';
+import axios from 'axios';
+import { firebase } from '@react-native-firebase/auth';
+import { API_URL } from '../../../secrets';
 
 const HomeScreen = () => {
   const navigate = useNavigation();
 
   /* Global Context States */
-
   const { pickupCity, setPickupCity, dropoffCity, setDropoffCity } = useContext(HomeContext);
-
   /* End of Global */
 
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [nearbyRides, setNearbyRides] = useState([]);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [isLoadingRides, setIsLoadingRides] = useState(false);
+
+
+  const mapRef = useRef(null);
 
   useEffect(() => {
-    console.log('Pick Up City:', pickupCity);
-    console.log('Drop Off City:', dropoffCity);
-  }, [pickupCity, dropoffCity]);
+    let intervalId;
+
+    const checkLocationAndFetchRides = () => {
+      if (currentLocation) {
+        fetchNearbyRides();
+        intervalId = setInterval(fetchNearbyRides, 15000); // Call fetchNearbyRides every 15 seconds
+      }
+    };
+
+    checkLocationAndFetchRides();
+
+    return () => {
+      clearInterval(intervalId); // Clean up the interval on unmount
+    };
+  }, [currentLocation, fetchNearbyRides]);
+
+
+  const fetchNearbyRides = async () => {
+  
+    try {
+      if (currentLocation) {  // Check if currentLocation has a value
+        const token = await firebase.auth().currentUser.getIdToken(true);
+        const response = await axios.get(`${API_URL}/api/v1/user/getNearbyRides`, {
+          params: {
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+       
+        setNearbyRides(response.data.data);
+      } else {
+        console.warn('Current location not available yet');
+      }
+    } catch (error) {
+      if (error.response) {
+        console.error('Error fetching nearby rides:', error.response.data.data);
+      } else if (error.request) {
+        console.error('Error fetching nearby rides: No response received from server');
+      } else {
+        console.error('Error fetching nearby rides:', error.message);
+      }
+    } finally {
+      setIsLoadingRides(false);
+    }
+  };
 
   useEffect(() => {
     const getCurrentLocation = async () => {
@@ -41,10 +91,11 @@ const HomeScreen = () => {
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
           console.log('Location permission granted');
           Geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
               const { latitude, longitude } = position.coords;
-
               setCurrentLocation({ latitude, longitude });
+              // Fetch nearby rides after setting the currentLocation
+              fetchNearbyRides();
             },
             (error) => {
               console.log('Error getting location:', error);
@@ -60,11 +111,27 @@ const HomeScreen = () => {
         }
       } catch (err) {
         console.warn('Error requesting location permission:', err);
+      } finally {
+        setIsLoadingLocation(false);
       }
     };
 
     getCurrentLocation();
   }, []);
+
+  useEffect(() => {
+    if (currentLocation && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        },
+        500 // Animation duration in milliseconds
+      );
+    }
+  }, [currentLocation]);
 
   const handleGoButton = () => {
     if (!pickupCity) {
@@ -73,16 +140,14 @@ const HomeScreen = () => {
         position: 'bottom',
         visibilityTime: 2000,
         text1: 'Please fill in the Pickup City',
-      })
-
+      });
     } else if (!dropoffCity) {
       Toast.show({
         type: 'error',
         position: 'bottom',
         visibilityTime: 2000,
         text1: 'Please fill in the Dropoff City',
-      })
-
+      });
     } else {
       navigate.navigate('TripDetails', { pickupCity, dropoffCity });
     }
@@ -96,26 +161,28 @@ const HomeScreen = () => {
     navigate.navigate('DropOffLocation', { currentLocation });
   };
 
+  if (isLoadingLocation) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#000000" />
+        <Text style={{ marginTop: 10 }}>Loading location...</Text>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={styles.floatingContainer}>
-          <Text style={styles.title}>Taxi Pool</Text>
-          <View style={styles.optionsContainer}><TouchableOpacity style={styles.optionButton} onPress={handlePickCity}>
+
+      <View style={styles.floatingContainer}>
+        <Text style={styles.title}>Taxi Pool</Text>
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity style={styles.optionButton} onPress={handlePickCity}>
             <MaterialCommunityIcons name="map-marker-outline" size={24} color="#333" />
             {pickupCity && pickupCity.address ? (
               <>
-                <Text
-                  style={styles.optionButtonText}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
+                <Text style={styles.optionButtonText} numberOfLines={1} ellipsizeMode="tail">
                   {pickupCity.address.substring(0, 30) + '...'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.clearButton}
-                  onPress={() => setPickupCity(null)}
-                >
+                <TouchableOpacity style={styles.clearButton} onPress={() => setPickupCity(null)}>
                   <MaterialCommunityIcons name="close" size={24} color="#333" />
                 </TouchableOpacity>
               </>
@@ -124,46 +191,62 @@ const HomeScreen = () => {
             )}
           </TouchableOpacity>
 
-            <TouchableOpacity style={styles.optionButton} onPress={handleDropCity}>
-              <MaterialCommunityIcons name="map-marker-outline" size={24} color="#333" />
-              {dropoffCity && dropoffCity.address ? (
-                <>
-                  <Text
-                    style={styles.optionButtonText}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {dropoffCity.address.substring(0, 30) + '...'}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => setDropoffCity(null)}
-                  >
-                    <MaterialCommunityIcons name="close" size={24} color="#333" />
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={styles.optionButtonText}>Choose drop-off location</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={styles.button} onPress={handleGoButton}>
-            <Text style={styles.buttonText}>Go</Text>
+          <TouchableOpacity style={styles.optionButton} onPress={handleDropCity}>
+            <MaterialCommunityIcons name="map-marker-outline" size={24} color="#333" />
+            {dropoffCity && dropoffCity.address ? (
+              <>
+                <Text style={styles.optionButtonText} numberOfLines={1} ellipsizeMode="tail">
+                  {dropoffCity.address.substring(0, 30) + '...'}
+                </Text>
+                <TouchableOpacity style={styles.clearButton} onPress={() => setDropoffCity(null)}>
+                  <MaterialCommunityIcons name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.optionButtonText}>Choose drop-off location</Text>
+            )}
           </TouchableOpacity>
         </View>
-        <View style={styles.cardsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <VehicleCard imageSource={cardBackgroundImage} title="Flexible Start & End Points" icon="car" />
-            <VehicleCard imageSource={cardBackgroundImage} title="Zero Security Depsoit" icon="motorbike" />
-            <VehicleCard imageSource={cardBackgroundImage} title="Doorstep Delivery" icon="motorbike" />
-            <VehicleCard imageSource={cardBackgroundImage} title="With Fuel / Without Fuel" icon="motorbike" />
-          </ScrollView>
+
+        <TouchableOpacity style={styles.button} onPress={handleGoButton}>
+          <Text style={styles.buttonText}>Go</Text>
+        </TouchableOpacity>
+      </View>
+      {isLoadingRides ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#000000" />
+          <Text style={{ marginTop: 10, color: 'black', }}>Loading nearby rides...</Text>
         </View>
-        <View style={styles.container}>
-          <Accordion />
-        </View>
-      </ScrollView>
+      ) : (
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          showsUserLocation={true}
+          initialRegion={{
+            latitude: currentLocation ? currentLocation.latitude : 37.78825,
+            longitude: currentLocation ? currentLocation.longitude : -122.4324,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        >
+          {nearbyRides.map((ride) => (
+            <Marker
+              key={ride._id}
+              coordinate={{
+                latitude: ride.currentLocation.latitude,
+                longitude: ride.currentLocation.longitude,
+              }}
+              title={ride.name}
+            >
+              <Image
+                source={require('../../../assets/images/carIcon.png')}
+                style={styles.carIcon}
+                resizeMode="contain"
+              />
+            </Marker>
+          ))}
+        </MapView>
+      )}
     </SafeAreaView>
   );
 };
@@ -174,8 +257,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     elevation: 4,
+    marginTop: 20,
   },
-
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -184,7 +267,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: 20,
   },
   optionsContainer: {
     flexDirection: 'column',
@@ -220,12 +302,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-
-  cardsContainer: {
-
-    marginTop: 20,
-    marginBottom: 10,
-    height: 140,
+  map: {
+    flex: 1,
+  },
+  carIcon: {
+    width: 40,
+    height: 40,
   },
 });
 
