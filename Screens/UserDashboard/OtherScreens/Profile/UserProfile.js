@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import auth from '@react-native-firebase/auth';
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
@@ -16,6 +17,10 @@ const UserProfile = () => {
   const [refresh, setRefresh] = useState(false);
   const [allowPhoneNumberEdit, setAllowPhoneNumberEdit] = useState(false);
   const [user, setUser] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
+  const [departmentsError, setDepartmentsError] = useState(null);
 
   useEffect(() => {
     setRefresh(false);
@@ -25,6 +30,7 @@ const UserProfile = () => {
         setName(authUser.displayName);
         setEmail(authUser.email);
         setPhoneNumber(authUser.phoneNumber);
+        fetchDepartments(authUser);
       }
     });
 
@@ -37,13 +43,39 @@ const UserProfile = () => {
     }
   }, [user]);
 
+  const fetchDepartments = async (authUser) => {
+    setLoadingDepartments(true);
+    setDepartmentsError(null);
+
+    try {
+      const token = await authUser.getIdToken();
+      const response = await axios.get(`${API_URL}/api/v1/user/getdepartment`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        timeout: 5000,
+      });
+      setDepartments(response.data);
+    } catch (error) {
+      console.log(error);
+      setDepartmentsError('Failed to fetch departments. Please try again.');
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     setLoading(true);
 
     try {
       const currentUser = auth().currentUser;
 
-      if (name !== currentUser.displayName || email !== currentUser.email || phoneNumber !== currentUser.phoneNumber) {
+      if (
+        name !== currentUser.displayName ||
+        email !== currentUser.email ||
+        phoneNumber !== currentUser.phoneNumber ||
+        selectedDepartment !== null
+      ) {
         // Update user profile in Firebase Authentication
         await currentUser.updateProfile({
           displayName: name,
@@ -59,16 +91,19 @@ const UserProfile = () => {
             name,
             email,
             phoneNumber,
+            departmentId: selectedDepartment,
           },
+
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
+            timeout: 5000,
           }
+
         );
       }
 
-      setLoading(false);
       setRefresh(true);
 
       Toast.show({
@@ -79,13 +114,14 @@ const UserProfile = () => {
       });
     } catch (error) {
       console.log(error);
-      setLoading(false);
       Toast.show({
         type: 'error',
         position: 'bottom',
         visibilityTime: 3000,
         text1: 'Failed to update profile. Please try again.',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,6 +160,22 @@ const UserProfile = () => {
             fontWeight="bold"
           />
         )}
+        {loadingDepartments ? (
+          <ActivityIndicator size="small" color="black" style={styles.loadingIndicator} />
+        ) : departmentsError ? (
+          <Text style={styles.errorText}>{departmentsError}</Text>
+        ) : (
+          <Picker
+            style={styles.picker}
+            selectedValue={selectedDepartment}
+            onValueChange={(itemValue) => setSelectedDepartment(itemValue)}
+          >
+            <Picker.Item label="Select Department" value={null} />
+            {departments.map((department) => (
+              <Picker.Item key={department._id} label={department.name} value={department._id} />
+            ))}
+          </Picker>
+        )}
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile} disabled={loading}>
@@ -154,6 +206,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginTop: 4,
     borderRadius: 15,
+  },
+  picker: {
+    marginBottom: 10,
+    borderColor: 'black',
+    color: 'black',
+    borderWidth: 1,
+    borderRadius: 15,
+  },
+  loadingIndicator: {
+    marginBottom: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
   },
   saveButton: {
     backgroundColor: "black",

@@ -44,7 +44,7 @@ const HomeScreen = () => {
 
 
   const fetchNearbyRides = async () => {
-  
+
     try {
       if (currentLocation) {  // Check if currentLocation has a value
         const token = await firebase.auth().currentUser.getIdToken(true);
@@ -56,8 +56,9 @@ const HomeScreen = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          timeout: 5000,
         });
-       
+
         setNearbyRides(response.data.data);
       } else {
         console.warn('Current location not available yet');
@@ -66,7 +67,9 @@ const HomeScreen = () => {
       if (error.response) {
         console.error('Error fetching nearby rides:', error.response.data.data);
       } else if (error.request) {
+
         console.error('Error fetching nearby rides: No response received from server');
+
       } else {
         console.error('Error fetching nearby rides:', error.message);
       }

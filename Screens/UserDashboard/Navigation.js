@@ -72,9 +72,21 @@ const NavigationScreen = () => {
                         });
                     } else if (error.request) {
                         console.log('No response received from the server');
+                        Toast.show({
+                            position: 'top',
+                            type: 'error',
+                            visibilityTime: 4000,
+                            text1: 'No response received from the server. Trying again...',
+                        })
                         retries++;
                         if (retries < maxRetries) {
                             console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+                            Toast.show({
+                                position: 'top',
+                                type: 'error',
+                                visibilityTime: 4000,
+                                text1: `No response from server, Retrying in ${retryDelay / 1000} seconds...`,
+                            })
                             setTimeout(verifyToken, retryDelay);
                         } else {
                             Toast.show({
@@ -125,7 +137,7 @@ const NavigationScreen = () => {
             console.log('Token stored in backend');
         } catch (error) {
             console.log('Error storing token in backend:', error.message);
-            
+
         }
     }
 
