@@ -66,6 +66,7 @@ const HomeScreen = () => {
     } catch (error) {
       if (error.response) {
         console.error('Error fetching nearby rides:', error.response.data.data);
+        console.log('Error Nearby Rides:', error.response.data.data);
       } else if (error.request) {
 
         console.error('Error fetching nearby rides: No response received from server');

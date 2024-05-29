@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import Home from "./HomeScreen/Home";
 import Bookings from "./BookingsScreen/Bookings";
 import More from "./MoreScreen/More";
@@ -19,101 +19,94 @@ const NavigationScreen = () => {
 
 
     const fcmToken = useFcm();
-
     const navigate = useNavigation();
 
-    useEffect(() => {
-        const handleSendTokenToAPI = async () => {
-            let retries = 0;
-            const maxRetries = 3;
-            const retryDelay = 2000; // 2 seconds
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
 
-            const verifyToken = async () => {
-                try {
-                    console.log('UseEffect is running in Navigation...');
-                    const token = await firebase.auth().currentUser.getIdToken(true);
-                    console.log('User Token', token);
-                    const response = await axios.post(
-                        `${API_URL}/api/v1/auth/verify-token`,
-                        null,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                            timeout: 5000,
-                        }
-                    );
-                    if (response.data.status === 'success') {
-                        Toast.show({
-                            position: 'top',
-                            type: 'success',
-                            text1: 'You have successfully Logged In',
-                        });
-                    } else {
-                        console.log('Token verification response:', response.data);
-                        Toast.show({
-                            position: 'top',
-                            type: 'error',
-                            visibilityTime: 4000,
-                            text1: 'Verification failed. Please try again.',
-                        });
-                        navigate.navigate('Login');
-                    }
-                    console.log('Token verification response:', response.data);
-                } catch (error) {
-                    console.error('Error verifying token:', error);
-                    if (error.response) {
-                        console.log('Server responded with an error:', error.response.data);
-                        Toast.show({
-                            position: 'top',
-                            type: 'error',
-                            visibilityTime: 4000,
-                            text1: 'Server responded with an error. Please try again later.',
-                        });
-                    } else if (error.request) {
-                        console.log('No response received from the server');
-                        Toast.show({
-                            position: 'top',
-                            type: 'error',
-                            visibilityTime: 4000,
-                            text1: 'No response received from the server. Trying again...',
-                        })
-                        retries++;
-                        if (retries < maxRetries) {
-                            console.log(`Retrying in ${retryDelay / 1000} seconds...`);
-                            Toast.show({
-                                position: 'top',
-                                type: 'error',
-                                visibilityTime: 4000,
-                                text1: `No response from server, Retrying in ${retryDelay / 1000} seconds...`,
-                            })
-                            setTimeout(verifyToken, retryDelay);
-                        } else {
-                            Toast.show({
-                                position: 'top',
-                                type: 'error',
-                                visibilityTime: 4000,
-                                text1: 'No response from the server. Please check your internet connection.',
-                            });
-                        }
-                    } else {
-                        console.log('Error:', error.message);
-                        console.log('Error details:', error);
-                        Toast.show({
-                            position: 'top',
-                            type: 'error',
-                            visibilityTime: 4000,
-                            text1: 'An error occurred. Please try again later.',
-                        });
-                    }
+    const verifyToken = useCallback(async (retries = 0) => {
+        try {
+            console.log('UseEffect is running in Navigation...');
+            const token = await firebase.auth().currentUser.getIdToken(true);
+            console.log('User Token', token);
+            const response = await axios.post(
+                `${API_URL}/api/v1/auth/verify-token`,
+                null,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    timeout: 10000,
                 }
-            };
+            );
+            if (response.data.status === 'success') {
+                Toast.show({
+                    position: 'top',
+                    type: 'success',
+                    text1: 'You have successfully Logged In',
+                });
+            } else {
+                console.log('Token verification response:', response.data);
+                Toast.show({
+                    position: 'top',
+                    type: 'error',
+                    visibilityTime: 4000,
+                    text1: 'Verification failed. Please try again.',
+                });
+                navigate.navigate('Login');
+            }
+            console.log('Token verification response:', response.data);
+        } catch (error) {
+            console.error('Error verifying token:', error);
+            if (error.response) {
+                console.log('Server responded with an error:', error.response.data);
+                Toast.show({
+                    position: 'top',
+                    type: 'error',
+                    visibilityTime: 4000,
+                    text1: 'Server responded with an error. Please try again later.',
+                });
+            } else if (error.request) {
+                console.log('No response received from the server', error.request);
+                Toast.show({
+                    position: 'top',
+                    type: 'error',
+                    visibilityTime: 4000,
+                    text1: 'No response received from the server. Trying again...',
+                });
+                if (retries < maxRetries) {
+                    console.log(`Retrying in ${retryDelay / 1000} seconds...`);
+                    Toast.show({
+                        position: 'top',
+                        type: 'error',
+                        visibilityTime: 4000,
+                        text1: `No response from server, Retrying in ${retryDelay / 1000} seconds...`,
+                    });
+                    setTimeout(() => verifyToken(retries + 1), retryDelay);
+                } else {
+                    Toast.show({
+                        position: 'top',
+                        type: 'error',
+                        visibilityTime: 4000,
+                        text1: 'No response from the server. Please check your internet connection.',
+                    });
+                }
+            } else {
+                console.log('Error:', error.message);
+                console.log('Error details:', error);
+                Toast.show({
+                    position: 'top',
+                    type: 'error',
+                    visibilityTime: 4000,
+                    text1: 'An error occurred. Please try again later.',
+                });
+            }
+        }
+    }, [maxRetries, navigate, retryDelay]);
 
-            verifyToken();
-        };
-
-        handleSendTokenToAPI();
-    }, []);
+    useEffect(() => {
+        verifyToken();
+    }, [verifyToken]);
 
     useEffect(() => {
         if (fcmToken) {
@@ -131,7 +124,7 @@ const NavigationScreen = () => {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
-                    timeout: 5000,
+                    timeout: 10000,
                 }
             );
             console.log('Token stored in backend');

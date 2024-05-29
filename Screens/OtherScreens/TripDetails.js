@@ -7,6 +7,7 @@ import firebase from '@react-native-firebase/app';
 import '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../secrets';
+import Toast from 'react-native-toast-message';
 
 const TripDetails = () => {
     const navigate = useNavigation();
@@ -128,7 +129,10 @@ const TripDetails = () => {
                     },
                     timeout: 10000,
                 }
+
+
             );
+            console.log('Response:', response.data);
             console.log('Booking Response:', response.data);
             if (response.data.status === 'success') {
                 if (response.data.requiresApproval) {
@@ -158,7 +162,12 @@ const TripDetails = () => {
                         setBookingError('Forbidden. Please check your permissions.');
                     }
                 } else if (error.response.status === 400) {
-                    setBookingError('Bad Request. Please check your booking details.');
+                    Toast.show({
+                        type: 'error',
+                        text1: error.response.data.message,
+                        text1Style: { textAlign: 'center' },
+                    })
+                    setBookingError(error.response.data.message);
                 } else {
                     setBookingError('Failed to book the ride. Please try again.');
                 }
@@ -424,6 +433,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 10,
         marginTop: 16,
+        color: 'black',
     },
     loadingText: {
         fontSize: 16,

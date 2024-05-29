@@ -1,12 +1,14 @@
 // /screens/UserDashboard/OtherScreens/Map/DriverLocMapScreen.js
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import axios from 'axios';
 import { API_URL } from '../../../../secrets';
 import { firebase } from '@react-native-firebase/auth';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Toast from 'react-native-toast-message';
 
 const DriverLocMapScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -134,6 +136,17 @@ const DriverLocMapScreen = ({ route }) => {
 
     return points;
   };
+  const handleCall = () => {
+    if (!driverPhoneNumber) {
+      Toast.show({
+        type: 'error',
+        text1: 'Driver phone number not found',
+      })
+      return;
+    }
+    let phoneNumber = driverPhoneNumber;
+    Linking.openURL(`tel:${phoneNumber}`);
+  }
 
   return (
     <View style={styles.container}>
@@ -171,8 +184,15 @@ const DriverLocMapScreen = ({ route }) => {
       {/* Estimated time and distance section */}
       <View style={styles.infoContainer}>
         <Text style={styles.driverInfoText}>Driver Name: {driverName}</Text>
-        <Text style={styles.driverInfoText}>Phone Number: {driverPhoneNumber}</Text>
+        <View style={styles.driverPhoneInfoContainer}>
+          <Text style={styles.driverInfoText}>Phone Number: {driverPhoneNumber}</Text>
+          <TouchableOpacity onPress={handleCall}>
+            <Icon name="phone" size={20} color="black" style={styles.phoneEmailIcon} />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.driverInfoText}>Vehicle Number: {vehicleNumber}</Text>
+
+
         {estimatedTime > 0 ? (
           <Text style={styles.infoText}>Estimated Time: {estimatedTime} min</Text>
         ) : (
@@ -181,6 +201,15 @@ const DriverLocMapScreen = ({ route }) => {
         {distance > 0 ? (
           <Text style={styles.infoText}>Distance: {formatDistance(distance)} km</Text>
         ) : null}
+
+        <View style={styles.reoprtButtonContainer}>
+          <TouchableOpacity
+            style={styles.reportButton}
+            onPress={() => navigation.navigate('ReportScreen', { bookingId })}
+          >
+            <Text style={styles.reportButtonText}>Report Anomalies</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Back button section */}
@@ -234,6 +263,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
     color: 'black',
+  },
+
+  driverPhoneInfoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  phoneEmailIcon: {
+    marginLeft: 10,
+    color: 'black',
+    marginBottom: 8
+  },
+
+  /* Report Anomaly button */
+  reoprtButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  reportButton: {
+    backgroundColor: 'black',
+    padding: 10,
+    borderRadius: 5,
+  },
+  reportButtonText: {
+    color: 'white',
+    fontSize: 16,
   },
 });
 

@@ -4,16 +4,25 @@ import firebase from '@react-native-firebase/app';
 import axios from 'axios';
 import { API_URL } from '../../../secrets';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon2 from 'react-native-vector-icons/MaterialIcons';
 
 const CompletedTab = () => {
     const [completedRides, setCompletedRides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [expandedRideIds, setExpandedRideIds] = useState([]);
 
     useEffect(() => {
         fetchCompletedRides();
     }, []);
 
+    const toggleRideExpanded = (rideId) => {
+        if (expandedRideIds.includes(rideId)) {
+            setExpandedRideIds(expandedRideIds.filter((id) => id !== rideId));
+        } else {
+            setExpandedRideIds([...expandedRideIds, rideId]);
+        }
+    };
     const fetchCompletedRides = async () => {
         try {
             setLoading(true);
@@ -42,16 +51,54 @@ const CompletedTab = () => {
 
     const renderCompletedRide = ({ item }) => (
         <View style={styles.rideContainer}>
-            <View style={styles.rideDetails}>
-                <Text style={styles.rideText}>Pickup: {item.pickUpCity.address}</Text>
-                <Text style={styles.rideText}>Drop-off: {item.dropOffCity.address}</Text>
-                <Text style={styles.rideText}>Distance: {item.distance}</Text>
-                <Text style={styles.rideText}>Estimated Travel Time: {item.estimatedTravelTime} min</Text>
-                <Text style={styles.rideText}>Driver: {item.driverId.name}</Text>
+
+            <View style={styles.rideHeader}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.rideText} numberOfLines={2} ellipsizeMode="tail">
+                        Pickup: {item.dropOffCity.address}
+                    </Text>
+                    {item.status === 'completed' ? (
+                        <Text style={styles.rideTextCompleted} numberOfLines={1} ellipsizeMode="tail">
+                            Status: {item.status}
+                        </Text>
+                    ) : (
+                        <Text style={styles.rideTextRejected} numberOfLines={1} ellipsizeMode="tail">
+                            Status: {item.status}
+                        </Text>
+                    )}
+                </View>
+                <TouchableOpacity onPress={() => toggleRideExpanded(item._id)}>
+                    <View style={styles.iconContainer}>
+                        <Icon2
+                            name={expandedRideIds.includes(item._id) ? 'expand-less' : 'expand-more'}
+                            size={24}
+                            color="black"
+                        />
+                    </View>
+                </TouchableOpacity>
             </View>
+
+            {expandedRideIds.includes(item._id) && (
+                <View style={styles.rideDetails}>
+                    <View
+                        style={{
+                            marginTop: 5,
+                            marginBottom: 5,
+                            borderBottomColor: 'black',
+                            borderBottomWidth: StyleSheet.hairlineWidth,
+                        }}
+                    />
+                    <Text style={styles.rideText}>Drop-off: {item.dropOffCity.address}</Text>
+                    <Text style={styles.rideText}>Distance: {item.distance}</Text>
+                    <Text style={styles.rideText}>Estimated Travel Time: {item.estimatedTravelTime} min</Text>
+                    {item.status === 'completed' ? (
+                        <Text style={styles.rideText}>Driver: {item.driverId.name}</Text>
+                    ) : null}
+
+                </View>
+            )}
         </View>
     );
-
     return (
         <View style={styles.container}>
             {loading ? (
@@ -113,6 +160,16 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         color: 'black',
     },
+    rideTextCompleted: {
+        fontSize: 16,
+        marginBottom: 4,
+        color: 'green',
+    },
+    rideTextRejected: {
+        fontSize: 16,
+        marginBottom: 4,
+        color: 'red',
+    },
     loadingText: {
         fontSize: 18,
         textAlign: 'center',
@@ -147,6 +204,19 @@ const styles = StyleSheet.create({
         color: 'black',
         fontSize: 16,
         marginLeft: 8,
+    },
+
+    /* Headers */
+    rideHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+
+    },
+    iconContainer: {
+        backgroundColor: '#e0e0e0',
+        padding: 4,
+        borderRadius: 4,
     },
 });
 

@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { API_URL } from '../../secrets';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firebase } from '@react-native-firebase/auth';
 
 const sendDriverNotifications = async (bookingId) => {
   try {

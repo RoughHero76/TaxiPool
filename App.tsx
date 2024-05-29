@@ -35,6 +35,9 @@ import TripDetails from "./Screens/OtherScreens/TripDetails";
 //Driver Live Location MAP
 import DriverLocMapScreen from "./Screens/UserDashboard/OtherScreens/Map/DriverLocMapScreen";
 
+//Report Anomalies
+import ReportAnomalies from "./Screens/OtherScreens/ReportAnomalies";
+
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -131,6 +134,17 @@ const App = () => {
               headerTitle: 'Support',
             }}
           />
+
+          <Stack.Screen
+            name="ReportAnomalies"
+            component={ReportAnomalies
+            }
+            options={{
+              headerShown: true,
+              headerTitle: 'Support',
+            }}
+          />
+
 
 
 

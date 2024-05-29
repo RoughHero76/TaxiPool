@@ -17,6 +17,8 @@ const UpcomingTab = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const [cancelBookingLoading, setCancelBookingLoading] = useState(false);
+
     const [showDriverLocationLoading, setShowDriverLocationLoading] = useState(false);
 
     const navigate = useNavigation();
@@ -247,6 +249,43 @@ const UpcomingTab = () => {
                 statusColor = '#F44336';
         }
 
+        const handleReportAnomaly = async () => {
+            navigate.navigate('ReportAnomalies', {
+                bookingId: item._id ? item._id : null,
+                driverId: item.driver && item.driver._id ? item.driver._id : null,
+                vehicleId: item.vehicle && item.vehicle._id ? item.vehicle._id : null,
+            });
+        };
+
+        const handleCancelBooking = async (bookingId) => {
+
+            try {
+
+                setCancelBookingLoading(true);
+                const response = await axios.post(`${API_URL}/api/v1/user/cancelRide`, { bookingId: bookingId },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${await firebase.auth().currentUser.getIdToken(true)}`,
+                        },
+                    }
+                );
+                console.log('API response:', response.data);
+                if (response.data.status === 'success') {
+                    Toast.show({
+                        position: 'top',
+                        type: 'success',
+                        text1: response.data.message
+                    })
+                } else {
+                    console.error('Error cancelling booking:', response.data.message);
+                }
+            } catch (error) {
+                console.error('Error cancelling booking:', error);
+            } finally {
+                setCancelBookingLoading(false);
+            }
+        }
+
         return (
             <View style={styles.bookingItem}>
                 <Text style={styles.bookingIdText}>Booking ID Ref: {item._id}</Text>
@@ -283,15 +322,21 @@ const UpcomingTab = () => {
                                 )}
                         </TouchableOpacity>
                     </View>
+
                 )}
+
                 <View style={styles.bookingInformationContainer}>
                     <View style={styles.bookingInformation}>
-                        <Text style={styles.pickupLocationText}>Pick Up: {item.pickUpCity.address}</Text>
-                        <Text style={styles.dropoffLocationText}>Drop Off: {item.dropOffCity.address}</Text>
+                        <Text style={styles.pickupLocationText}>
+                            Pick Up: {item.pickUpCity && item.pickUpCity.address ? item.pickUpCity.address : 'N/A'}
+                        </Text>
+                        <Text style={styles.dropoffLocationText}>
+                            Drop Off: {item.dropOffCity && item.dropOffCity.address ? item.dropOffCity.address : 'N/A'}
+                        </Text>
                     </View>
                 </View>
                 <View style={styles.driverAvailabilityContainer}>
-                    {item.status !== 'pending' && item.status !== 'driverAccepted' && item.status !== 'driverArrivedPickup' && driverAvailability !== null && (
+                    {item.status !== 'cancelled ' && item.status !== 'rejected ' && item.status !== 'pending' && item.status !== 'driverAccepted' && item.status !== 'driverArrivedPickup' && driverAvailability !== null && (
                         <View style={styles.driverAvailabilityRow}>
                             <Text style={styles.driverAvailabilityText}>
                                 {driverAvailability ? 'Drivers found for this booking.' : 'No drivers found for this booking.'}
@@ -311,9 +356,38 @@ const UpcomingTab = () => {
                             </TouchableOpacity>
                         </View>
                     )}
+
+                    {item.status !== 'pending' && item.status !== 'cancelled ' && (
+                        <View style={styles.reportButtonContainer}>
+                            <TouchableOpacity
+                                style={styles.reportButton}
+                                onPress={handleReportAnomaly}
+                            >
+                                <Text style={styles.reportButtonText}>Report Anomaly</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    {(item.status === 'pending' || item.status === 'searchingRide') && (
+                        <View style={styles.cancelButtonContainer}>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                disabled={cancelBookingLoading}
+                                onPress={() => {
+                                    handleCancelBooking(item._id);
+                                }}
+                            >
+                                {cancelBookingLoading ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Text style={styles.cancelButtonText}>Cancel Booking</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
                 {/* Render other booking details */}
-            </View>
+            </View >
         );
     };
     const renderBookingItem = ({ item }) => {
@@ -483,6 +557,41 @@ const styles = StyleSheet.create({
     retryButtonText: {
         color: 'black',
         fontSize: 14,
+    },
+
+    /* Report Anomaly button */
+    reportButtonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        marginTop: 10,
+    },
+    reportButton: {
+        backgroundColor: 'gray',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    reportButtonText: {
+        color: 'black',
+        fontSize: 16,
+    },
+
+    /* Cancel Booking */
+
+    cancelButtonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-start',
+        marginTop: 10,
+    },
+    cancelButton: {
+        backgroundColor: 'red',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 10,
+    },
+    cancelButtonText: {
+        color: 'white',
+        fontSize: 16,
     },
 
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import axios from 'axios';
 import firebase from '@react-native-firebase/app';
@@ -9,8 +9,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import MapViewDirections from 'react-native-maps-directions';
 import { GOOGLE_MAPS_API_KEY } from '../../../secrets';
 import Icon from 'react-native-vector-icons/FontAwesome';
-
+import { useNavigation } from '@react-navigation/native';
 const OnGoingScreen = () => {
+
+
+  const navigation = useNavigation();
+
   const [ongoingRide, setOngoingRide] = useState(null);
   const [loading, setLoading] = useState(true);
   const [estimatedDistance, setEstimatedDistance] = useState(null);
@@ -56,6 +60,14 @@ const OnGoingScreen = () => {
     }
   };
 
+  const handleReportAnomaly = async () => {
+    navigation.navigate('ReportAnomalies', {
+      bookingId: ongoingRide._id ? ongoingRide._id : null,
+      driverId: ongoingRide.driverId && ongoingRide.driverId._id ? ongoingRide.driverId._id : null,
+      vehicleId: ongoingRide.vehicleId ? ongoingRide.vehicleId : null,
+    });
+  };
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -76,19 +88,19 @@ const OnGoingScreen = () => {
               longitudeDelta: 0.0421,
             }}
           >
-            <Marker coordinate={ongoingRide.pickUpCity}>
+            <Marker coordinate={ongoingRide.pickUpCity} title='Pick Up'>
               <View style={styles.markerContainer}>
                 <Icon name="map-marker" size={30} color="green" />
               </View>
             </Marker>
-            <Marker coordinate={ongoingRide.dropOffCity}>
+            <Marker coordinate={ongoingRide.dropOffCity} title='Drop Off'>
               <View style={styles.markerContainer}>
                 <Icon name="map-marker" size={30} color="red" />
               </View>
             </Marker>
             {ongoingRide.driverId.currentLocation && (
               <>
-                <Marker coordinate={ongoingRide.driverId.currentLocation}>
+                <Marker coordinate={ongoingRide.driverId.currentLocation} title='Your Location'>
                   <Image
                     source={require('../../../assets/images/carIcon.png')}
                     style={styles.carIcon}
@@ -100,7 +112,7 @@ const OnGoingScreen = () => {
                   destination={ongoingRide.dropOffCity}
                   apikey={GOOGLE_MAPS_API_KEY}
                   strokeWidth={3}
-                  strokeColor="blue"
+                  strokeColor="green"
                   onReady={(result) => {
                     const { distance, duration } = result;
                     setEstimatedDistance(distance.toFixed(2));
@@ -115,6 +127,14 @@ const OnGoingScreen = () => {
             <Text style={styles.detailsText}>Estimated Time: {estimatedTime} min</Text>
             <Text style={styles.detailsText}>Driver: {ongoingRide.driverId.name}</Text>
             <Text style={styles.detailsText}>Phone: {ongoingRide.driverId.phoneNumber}</Text>
+            <View style={styles.reoprtButtonContainer}>
+              <TouchableOpacity
+                style={styles.reportButton}
+                onPress={handleReportAnomaly}
+              >
+                <Text style={styles.reportButtonText}>Report Anomaly</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </>
       ) : (
@@ -167,6 +187,23 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  /* Report Anomaly button */
+  reoprtButtonContainer: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  reportButton: {
+    backgroundColor: 'black',
+    padding: 10,
+    borderRadius: 10,
+  },
+  reportButtonText: {
+    color: 'white',
+
+    fontSize: 16,
   },
 });
 
