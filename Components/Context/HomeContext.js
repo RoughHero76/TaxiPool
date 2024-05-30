@@ -8,6 +8,7 @@ export const HomeProvider = ({ children }) => {
   const [dropoffCity, setDropoffCity] = useState(null);
   const [bookingStatusArray, setBookingStatusArray] = useState([]);
   const [user, setUser] = useState(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   const updateBookingStatusArray = (bookingId, foundDrivers, notificationSent) => {
     const updatedBookingStatus = {
@@ -29,6 +30,8 @@ export const HomeProvider = ({ children }) => {
     updateBookingStatusArray,
     user,
     setUser,
+    isLoadingLocation,
+    setIsLoadingLocation,
   };
 
   return (

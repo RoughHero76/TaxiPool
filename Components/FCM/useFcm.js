@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
 import firebase from '@react-native-firebase/app';
 import messaging from '@react-native-firebase/messaging';
+import { HomeContext } from '../Context/HomeContext';
+import Geolocation from 'react-native-geolocation-service';
 
 const useFcm = () => {
   const [fcmToken, setFcmToken] = useState(null);
+  const { setIsLoadingLocation } = useContext(HomeContext);
 
   useEffect(() => {
     const requestNotificationPermission = async () => {
@@ -24,13 +27,37 @@ const useFcm = () => {
       }
     };
 
+    const requestLocationPermission = async () => {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'App needs access to your location',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Location permission granted');
+          // Additional logic for handling location if needed
+        } else {
+          console.log('Location permission denied');
+        }
+      } catch (err) {
+        console.warn('Error requesting location permission:', err);
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    };
+
     const requestFcmToken = async () => {
       try {
         const authStatus = await messaging().requestPermission();
         const enabled =
           authStatus === firebase.messaging.AuthorizationStatus.AUTHORIZED ||
           authStatus === firebase.messaging.AuthorizationStatus.PROVISIONAL;
-
         if (enabled) {
           const fcmToken = await messaging().getToken();
           setFcmToken(fcmToken);
@@ -43,7 +70,9 @@ const useFcm = () => {
     };
 
     requestNotificationPermission().then(() => {
-      requestFcmToken();
+      requestLocationPermission().then(() => {
+        requestFcmToken();
+      });
     });
   }, []);
 

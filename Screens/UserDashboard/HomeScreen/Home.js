@@ -14,12 +14,12 @@ const HomeScreen = () => {
   const navigate = useNavigation();
 
   /* Global Context States */
-  const { pickupCity, setPickupCity, dropoffCity, setDropoffCity } = useContext(HomeContext);
+  const { pickupCity, setPickupCity, dropoffCity, setDropoffCity, isLoadingLocation, setIsLoadingLocation } = useContext(HomeContext);
   /* End of Global */
 
   const [currentLocation, setCurrentLocation] = useState(null);
   const [nearbyRides, setNearbyRides] = useState([]);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+
   const [isLoadingRides, setIsLoadingRides] = useState(false);
 
 
@@ -38,7 +38,7 @@ const HomeScreen = () => {
     checkLocationAndFetchRides();
 
     return () => {
-      clearInterval(intervalId); // Clean up the interval on unmount
+      clearInterval(intervalId);
     };
   }, [currentLocation, fetchNearbyRides]);
 
@@ -46,7 +46,7 @@ const HomeScreen = () => {
   const fetchNearbyRides = async () => {
 
     try {
-      if (currentLocation) {  // Check if currentLocation has a value
+      if (currentLocation) {
         const token = await firebase.auth().currentUser.getIdToken(true);
         const response = await axios.get(`${API_URL}/api/v1/user/getNearbyRides`, {
           params: {
@@ -169,7 +169,7 @@ const HomeScreen = () => {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#000000" />
-        <Text style={{ marginTop: 10 }}>Loading location...</Text>
+        <Text style={{ marginTop: 10, color: 'black' }}>Loading location...</Text>
       </SafeAreaView>
     );
   }
