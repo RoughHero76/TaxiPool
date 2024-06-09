@@ -87,6 +87,8 @@ const UpcomingTab = () => {
                 setError('Failed to fetch upcoming bookings. Please try again.');
 
             }
+
+            console.log('Upcoming booking:', response.data.bookings[0].vehicleId);
         } catch (error) {
             console.error('Error fetching upcoming bookings:', error);
             setError('An error occurred while fetching upcoming bookings. Please try again.');
@@ -229,6 +231,10 @@ const UpcomingTab = () => {
                 statusText = 'Your booking is pending. Please wait for admin approval.';
                 statusColor = '#FFC107';
                 break;
+            case 'driverNotified':
+                statusText = 'Your Booking was approved and driver was notified';
+                statusColor = '#2196F3';
+                break;
             case 'searchingRide':
                 statusText = 'We are searching for a ride for you. Please wait.';
                 statusColor = '#2196F3';
@@ -293,16 +299,17 @@ const UpcomingTab = () => {
                     <Icon name="circle" size={12} color={statusColor} />
                     <Text style={styles.statusText}>{statusText}</Text>
                 </View>
-                {(item.status === 'driverAccepted' || item.status === 'driverArrivedPickup') && (
+                {(item.status === 'driverAccepted' || item.status === 'driverArrivedPickup' || item.status === 'driverNotified') && (
                     <View style={styles.driverInformationContainer}>
                         <Image
                             source={require('../../../assets/images/profile.jpg')}
                             style={styles.driverProfileImage}
                         />
-                        {item.driver ? (
+                        {item.driverId ? (
                             <View style={styles.contactInfoContainer}>
-                                <Text style={styles.driverNameText}>Name: {item.driver.name}</Text>
-                                <Text style={styles.driverContactText}>Contact Number: {item.driver.contactNumber}</Text>
+                                <Text style={styles.driverNameText}>Name: {item.driverId.name}</Text>
+                                <Text style={styles.driverContactText}>Contact Number: {item.driverId.phoneNumber}</Text>
+                                <Text style={styles.driverContactText}>Vehicle Number: {item.vehicleId.vehiclePlateNumber}</Text>
                             </View>
                         ) : (
                             <View style={styles.contactInfoContainer}>
@@ -311,19 +318,22 @@ const UpcomingTab = () => {
                         )}
                         <TouchableOpacity
                             style={styles.showLocationButton}
-                            disabled={showDriverLocationLoading}
+                            disabled={showDriverLocationLoading || item.status === 'driverNotified'}
                             onPress={() => handleShowLocation(item._id, item.pickUpCity.latitude, item.pickUpCity.longitude)}
                         >
-                            {showDriverLocationLoading ?
-                                (
-                                    <ActivityIndicator size="small" color="white" />
-                                ) : (
-                                    <Text style={styles.showLocationButtonText}>Show Location</Text>
-                                )}
+                            {showDriverLocationLoading ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : item.status === 'driverNotified' ? (
+                                <Text style={styles.showLocationButtonText}>N/A</Text>
+                            ) : (
+                                <Text style={styles.showLocationButtonText}>Show Location</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
 
                 )}
+
+
 
                 <View style={styles.bookingInformationContainer}>
                     <View style={styles.bookingInformation}>
@@ -336,7 +346,7 @@ const UpcomingTab = () => {
                     </View>
                 </View>
                 <View style={styles.driverAvailabilityContainer}>
-                    {item.status !== 'cancelled ' && item.status !== 'rejected ' && item.status !== 'pending' && item.status !== 'driverAccepted' && item.status !== 'driverArrivedPickup' && driverAvailability !== null && (
+                    {item.status !== 'driverNotified' && item.status !== 'cancelled' && item.status !== 'rejected' && item.status !== 'pending' && item.status !== 'driverAccepted' && item.status !== 'driverArrivedPickup' && driverAvailability !== null && (
                         <View style={styles.driverAvailabilityRow}>
                             <Text style={styles.driverAvailabilityText}>
                                 {driverAvailability ? 'Drivers found for this booking.' : 'No drivers found for this booking.'}

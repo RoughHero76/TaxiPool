@@ -19,6 +19,7 @@ const TripDetails = () => {
     const [error, setError] = useState(null);
     const [isBooking, setIsBooking] = useState(false);
     const [approvalReason, setApprovalReason] = useState('');
+    const [bookingDuration, setBookingDuration] = useState('');
 
     const [profileIncomplete, setProfileIncomplete] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -122,6 +123,7 @@ const TripDetails = () => {
                     pickUpCity: pickupCity,
                     dropOffCity: dropoffCity,
                     reason: approvalReason,
+                    bookingDuration: bookingDuration,
                 },
                 {
                     headers: {
@@ -132,7 +134,7 @@ const TripDetails = () => {
 
 
             );
-            console.log('Response:', response.data);
+            console.log('Response from Booking Ride:', response.data.message);
             console.log('Booking Response:', response.data);
             if (response.data.status === 'success') {
                 if (response.data.requiresApproval) {
@@ -309,9 +311,22 @@ const TripDetails = () => {
                     <Text style={styles.value}>{tripDetails.estimatedTravelTime} minutes</Text>
                 </View>
                 <View style={styles.detailsContainer}>
-                    <Text style={styles.label}>Within Hyderabad:</Text>
+                    <Text style={styles.label}>Within Plant:</Text>
                     <Text style={styles.value}>{tripDetails.isWithinThermalPlant ? 'Yes' : 'No'}</Text>
                 </View>
+                <View style={styles.approvalRequestTextContainer}>
+                    <Text style={styles.approvalRequestText}>Booking Duration In Minutes (Optional)</Text>
+                    <TextInput
+                        placeholder='Booking Duration'
+                        placeholderTextColor={'gray'}
+                        style={styles.approvalRequestInput}
+                        onChangeText={setBookingDuration}
+                        keyboardType='numeric'
+                    >
+
+                    </TextInput>
+                </View>
+
                 {tripDetails.isSuperAdministratorPrivilegeRequired && (
                     <View style={styles.approvalContainer}>
                         <MaterialCommunityIcons name="alert-circle-outline" size={24} color="red" />
@@ -361,7 +376,7 @@ const TripDetails = () => {
                             {isBooking ? (
                                 <ActivityIndicator size="small" color="white" />
                             ) : (
-                                <Text style={styles.bookButtonText}>Book</Text>
+                                <Text style={styles.bookButtonText}>Request TA Approval</Text>
                             )}
                         </TouchableOpacity>
                     )
