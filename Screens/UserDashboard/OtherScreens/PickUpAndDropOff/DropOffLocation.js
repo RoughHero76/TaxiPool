@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Modal,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -19,6 +20,8 @@ import Geolocation from 'react-native-geolocation-service';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { HomeContext } from '../../../../Components/Context/HomeContext';
 import Toast from 'react-native-toast-message';
+import { firebase } from '@react-native-firebase/auth';
+import { API_URL } from '../../../../secrets';
 
 const GOOGLE_API_KEY = 'AIzaSyCYwHNeqOW-oeSSex-b-vqUyZb3vWcWxVA';
 
@@ -43,6 +46,53 @@ const DropOffLocation = () => {
       fetchAddressFromCoordinates(latitude, longitude);
     }
   }, [returnedLocation]);
+
+
+  //Pre Defined Locations logic
+  const [plantLocations, setPlantLocations] = useState(null);
+  const [plantLocationError, setPlantLocationError] = useState('');
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isPlantLocationLoading, setIsPlantLocationLoading] = useState(false);
+
+  useEffect(() => {
+    fetchPlantLocation();
+  }, []);
+
+  const fetchPlantLocation = async () => {
+
+    try {
+      setIsPlantLocationLoading(true);
+      const token = await firebase.auth().currentUser.getIdToken(true);
+
+      const response = await fetch(`${API_URL}/api/v1/user/fetchPlantLocation`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.message === 'no location present') {
+        setPlantLocations(null);
+        setPlantLocationError('No plant locations found');
+        return;
+      }
+
+      setPlantLocations(data.data);
+    } catch (error) {
+      console.log(error);
+      setPlantLocations(null);
+      Toast.show({
+        type: 'error',
+        text1: 'Error Fetching Plant Locations',
+      });
+
+      setPlantLocationError('Error Fetching Plant Locations');
+    } finally {
+      setIsPlantLocationLoading(false);
+    }
+  };
+
 
   const fetchAddressFromCoordinates = async (latitude, longitude) => {
     try {
@@ -218,6 +268,14 @@ const DropOffLocation = () => {
                 <Text style={styles.buttonText}>Open Map</Text>
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setIsModalVisible(true)}
+            >
+              <MaterialCommunityIcons name="map-marker" size={24} color="#333" />
+              <Text style={styles.buttonText}>Select Predefined Location</Text>
+            </TouchableOpacity>
           </View>
           {loading.fetchingAddress ? (
             <View style={styles.loadingContainer}>
@@ -246,6 +304,57 @@ const DropOffLocation = () => {
         <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmLocation}>
           <Text style={styles.confirmButtonText}>Confirm Location</Text>
         </TouchableOpacity>
+
+        {/* Modal */}
+        <Modal
+          visible={isModalVisible}
+          animationType="slide"
+          onRequestClose={() => setIsModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            {isPlantLocationLoading ? (
+              <ActivityIndicator size="large" color="#333" />
+            ) : (
+              <>
+                <Text style={styles.modalTitle}>Select a Predefined Location</Text>
+                {plantLocations ? (
+                  <ScrollView style={styles.modalContent}>
+                    {plantLocations.length > 0 ? (
+                      plantLocations.map((location) => (
+                        <TouchableOpacity
+                          key={location._id}
+                          style={styles.modalItem}
+                          onPress={() => {
+                            const selectedLocation = {
+                              address: location.location.address,
+                              latitude: location.location.latitude,
+                              longitude: location.location.longitude,
+                            };
+                            setDropoffCity(selectedLocation);
+                            SetUserDropOffAddress(selectedLocation);
+                            setIsModalVisible(false);
+                          }}
+                        >
+                          <Text style={styles.modalItemText}>{location.name}</Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <Text style={styles.modalNoLocationsText}>No locations available</Text>
+                    )}
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.modalErrorText}>{plantLocationError}</Text>
+                )}
+                <TouchableOpacity
+                  style={styles.modalCloseButton}
+                  onPress={() => setIsModalVisible(false)}
+                >
+                  <Text style={styles.modalCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </Modal>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -357,6 +466,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+
+  /* Modal styles */
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalItem: {
+    backgroundColor: '#f2f2f2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  modalNoLocationsText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+  },
+  modalErrorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+  },
+  modalCloseButton: {
+    backgroundColor: '#333',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalCloseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
 });
 
 export default DropOffLocation;
