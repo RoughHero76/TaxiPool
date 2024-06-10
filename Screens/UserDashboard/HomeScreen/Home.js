@@ -177,7 +177,7 @@ const HomeScreen = () => {
     <SafeAreaView style={{ flex: 1 }}>
 
       <View style={styles.floatingContainer}>
-        <Text style={styles.title}>Taxi Pool</Text>
+        <Text style={styles.title}>Common Pool Vehicle Booking</Text>
         <View style={styles.optionsContainer}>
           <TouchableOpacity style={styles.optionButton} onPress={handlePickCity}>
             <MaterialCommunityIcons name="map-marker-outline" size={24} color="#333" />

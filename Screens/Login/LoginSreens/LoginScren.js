@@ -133,7 +133,7 @@ const LoginScreen = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-        <Text style={styles.heading}>Taxi Pool</Text>
+        <Text style={styles.heading}>Common Pool Vehicle Booking</Text>
         <View style={styles.loginContainer}>
           <Text style={styles.label}>Login</Text>
           <Text style={styles.details}>Fill up the details to Log in to your account</Text>
